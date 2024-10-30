@@ -39,6 +39,7 @@ struct board_tile {
 
 // Prints out the current state of the board.
 void print_board(struct board_tile board[SIZE][SIZE]);
+void init_board(struct board_tile board[SIZE][SIZE]);
 char type_to_char(enum tile_type type);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -51,17 +52,41 @@ int main(void) {
     struct board_tile game_board[SIZE][SIZE];
 
     // TODO (Stage 1.1) Initialise the gameboard.
-    
+    init_board(game_board);
+
     // Read user input and place turtles.
+    int num_turtle;
     printf("How many turtles? ");
     // TODO (Stage 1.2): Scan in the turtles, and place them on the map.
+    scanf("%d", &num_turtle);
+    int turtle_x, turtle_y;
+    if(num_turtle > 0) printf ("Enter pairs:\n");
+
+    for(int i=0; i<num_turtle; i++)
+    {
+        scanf ("%d %d", &turtle_x, &turtle_y);
+        if ((turtle_x>0) && (turtle_x<8) && (turtle_y>0) &&
+        (turtle_y<=8) && (!game_board[turtle_x][turtle_y].occupied))
+        game_board[turtle_x][turtle_y].type = TURTLE;
+    }
 
     // Start the game and print out the gameboard.
     printf("Game Started\n");
     print_board(game_board);
 
+    char command;
     printf("Enter command: ");
     // TODO (Stage 1.3): Create a command loop, to read and execute commands!
+    while (scanf("%c\n", &command) != EOF)
+    {
+        /*COMMANDS WILL BE EXECUTED HERE*/
+        if (command != NULL)
+        {
+            print_board(game_board);
+            printf("Enter Command: ");
+        }
+    }
+
 
     printf("Thank you for playing Frogger Game!\n");
     return 0;

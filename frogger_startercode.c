@@ -1,7 +1,11 @@
-// Program name
+// Jumping Tian
 //
-// This program was written by [your name] (NIM i.e. )
-// on [date]
+// This program was written by Group 5
+// Christopher Marchel Mark Gijoh (01082240011)
+// Farrel Fyelo Hollans Tamaela   (01082240024)
+// Gian Jeconiah Sitompul         (01082240025)
+// Kenny Lay                      (01082240010)
+// on October 25, 2024
 //
 // TODO: Description of program
 
@@ -12,21 +16,29 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // Provided constants
-#define SIZE        9
-#define TRUE        1
-#define FALSE       0
+#define SIZE 9
+#define TRUE 1
+#define FALSE 0
 
 // TODO: you may choose to add additional #defines here.
 
 // Provided Enums
-enum tile_type {LILLYPAD, BANK, WATER, TURTLE, LOG};
+enum tile_type
+{
+    LILLYPAD,
+    BANK,
+    WATER,
+    TURTLE,
+    LOG
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////  STRUCTS  //////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
 // Provided structs
-struct board_tile {
+struct board_tile
+{
     enum tile_type type; // The type of piece it is (water, bank, etc.)
     int occupied;        // TRUE or FALSE based on if Frogger is there.
 };
@@ -46,13 +58,17 @@ char type_to_char(enum tile_type type);
 //////////////////////////  FUNCTION IMPLEMENTATIONS  //////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-int main(void) {
+int main(void)
+{
 
     printf("Welcome to Frogger Game!\n");
     struct board_tile game_board[SIZE][SIZE];
 
     // TODO (Stage 1.1) Initialise the gameboard.
+<<<<<<< HEAD
     init_board(game_board);
+=======
+>>>>>>> 2c5f72c78d2652f8b78969ad29482cd182251d24
 
     // Read user input and place turtles.
     int num_turtle;
@@ -98,18 +114,23 @@ int main(void) {
 
 // TODO: Add more functions here!
 
-
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////// PROVIDED FUNCTIONS //////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-void print_board(struct board_tile board[SIZE][SIZE]) {
-    for (int row = 0; row < SIZE; row++) {
-        for (int col = 0; col < SIZE; col++) {
+void print_board(struct board_tile board[SIZE][SIZE])
+{
+    for (int row = 0; row < SIZE; row++)
+    {
+        for (int col = 0; col < SIZE; col++)
+        {
             char type_char = '\0';
-            if (board[row][col].occupied) {
+            if (board[row][col].occupied)
+            {
                 type_char = 'F';
-            } else {
+            }
+            else
+            {
                 type_char = type_to_char(board[row][col].type);
             }
             printf("%c ", type_char);
@@ -118,17 +139,27 @@ void print_board(struct board_tile board[SIZE][SIZE]) {
     }
 }
 
-char type_to_char(enum tile_type type) {
+char type_to_char(enum tile_type type)
+{
     char type_char = ' ';
-    if (type == LILLYPAD) {
+    if (type == LILLYPAD)
+    {
         type_char = 'o';
-    } else if (type == BANK) {
+    }
+    else if (type == BANK)
+    {
         type_char = 'x';
-    } else if (type == WATER) {
+    }
+    else if (type == WATER)
+    {
         type_char = '~';
-    } else if (type == TURTLE) {
+    }
+    else if (type == TURTLE)
+    {
         type_char = 'T';
-    } else if (type == LOG) {
+    }
+    else if (type == LOG)
+    {
         type_char = 'L';
     }
     return type_char;

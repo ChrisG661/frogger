@@ -20,7 +20,8 @@
 #define TRUE 1
 #define FALSE 0
 
-// TODO: you may choose to add additional #defines here.
+// You may choose to add additional #defines here.
+#define TILE board[row][col]
 
 // Provided Enums
 enum tile_type
@@ -47,7 +48,8 @@ struct board_tile
 /////////////////////////////  FUNCTION PROTOTYPES  ////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-// TODO: Your function prototypes here
+// Your function prototypes here
+void init_board(struct board_tile board[SIZE][SIZE]);
 
 // Prints out the current state of the board.
 void print_board(struct board_tile board[SIZE][SIZE]);
@@ -64,45 +66,43 @@ int main(void)
     printf("Welcome to Frogger Game!\n");
     struct board_tile game_board[SIZE][SIZE];
 
-    // TODO (Stage 1.1) Initialise the gameboard.
-<<<<<<< HEAD
+    // (Stage 1.1) Initialise the gameboard.
     init_board(game_board);
-=======
->>>>>>> 2c5f72c78d2652f8b78969ad29482cd182251d24
 
     // Read user input and place turtles.
     int num_turtle;
     printf("How many turtles? ");
-    // TODO (Stage 1.2): Scan in the turtles, and place them on the map.
-    scanf("%d", &num_turtle);
-    int turtle_x, turtle_y;
-    if(num_turtle > 0) printf ("Enter pairs:\n");
 
-    for(int i=0; i<num_turtle; i++)
+    // (Stage 1.2): Scan in the turtles, and place them on the map.
+    int num_turtles;
+    scanf("%d", &num_turtles);
+    int turtle_x, turtle_y;
+    if (num_turtles > 0)
+        printf("Enter pairs:\n");
+
+    for (int i = 0; i < num_turtles; i++)
     {
-        scanf ("%d %d", &turtle_x, &turtle_y);
-        if ((turtle_x>0) && (turtle_x<8) && (turtle_y>0) &&
-        (turtle_y<=8) && (!game_board[turtle_x][turtle_y].occupied))
-        game_board[turtle_x][turtle_y].type = TURTLE;
+        scanf("%d %d", &turtle_x, &turtle_y);
+        if ((turtle_x > 0 && turtle_x < SIZE - 1) && (turtle_y >= 0 || turtle_y <= SIZE - 1) && (!game_board[turtle_x][turtle_y].occupied))
+            game_board[turtle_x][turtle_y].type = TURTLE;
     }
 
     // Start the game and print out the gameboard.
     printf("Game Started\n");
     print_board(game_board);
 
-    char command;
+    // (Stage 1.3): Create a command loop, to read and execute commands!
     printf("Enter command: ");
-    // TODO (Stage 1.3): Create a command loop, to read and execute commands!
+    char command;
     while (scanf("%c\n", &command) != EOF)
     {
-        /*COMMANDS WILL BE EXECUTED HERE*/
         if (command != NULL)
         {
+            // COMMANDS WILL BE EXECUTED HERE
             print_board(game_board);
-            printf("Enter Command: ");
+            printf("Enter command: ");
         }
     }
-
 
     printf("Thank you for playing Frogger Game!\n");
     return 0;
@@ -113,6 +113,32 @@ int main(void)
 ////////////////////////////////////////////////////////////////////////////////
 
 // TODO: Add more functions here!
+
+void init_board(struct board_tile board[SIZE][SIZE])
+{
+    for (int row = 0; row < SIZE; row++)
+    {
+        for (int col = 0; col < SIZE; col++)
+        {
+            TILE.occupied = FALSE;
+            if (row == 0)
+            {
+                if (col % 2 == 0)
+                    TILE.type = LILLYPAD;
+                else
+                    TILE.type = WATER;
+            }
+            else if (row == 8)
+            {
+                TILE.type = BANK;
+                if (col == 4)
+                    TILE.occupied = TRUE;
+            }
+            else
+                TILE.type = WATER;
+        }
+    }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////// PROVIDED FUNCTIONS //////////////////////////////
@@ -125,13 +151,13 @@ void print_board(struct board_tile board[SIZE][SIZE])
         for (int col = 0; col < SIZE; col++)
         {
             char type_char = '\0';
-            if (board[row][col].occupied)
+            if (TILE.occupied)
             {
                 type_char = 'F';
             }
             else
             {
-                type_char = type_to_char(board[row][col].type);
+                type_char = type_to_char(TILE.type);
             }
             printf("%c ", type_char);
         }

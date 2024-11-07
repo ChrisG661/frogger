@@ -7,6 +7,7 @@
 // Kenny Lay                      (01082240010)
 // on 1) October 25, 2024 (Starter code)
 //    2) October 31, 2024 (Phase 1.3)
+//    3) November 7, 2024 (Phase 2.3)
 //
 // TODO: Description of program
 
@@ -36,6 +37,16 @@ enum tile_type
     LOG
 };
 
+// Additional Enums
+enum direction
+{
+    FORWARD,
+    BACKWARD,
+    LEFT,
+    RIGHT,
+    STAY
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////  STRUCTS  //////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -56,6 +67,7 @@ void init_board(struct board_tile board[SIZE][SIZE]);
 void add_log(struct board_tile board[SIZE][SIZE], int, int, int);
 void clear_row(struct board_tile board[SIZE][SIZE], int);
 void remove_log(struct board_tile board[SIZE][SIZE], int, int);
+void move_frogger(struct board_tile board[SIZE][SIZE], int *x, int *y, enum direction);
 
 // Prints out the current state of the board.
 void print_board(struct board_tile board[SIZE][SIZE]);
@@ -121,6 +133,29 @@ int main(void)
             scanf(" %d %d", &x, &y);
             if ((x > 0) && (x < SIZE - 1))
                 remove_log(game_board, x, y);
+        }
+        else
+        {
+            direction move_direction = STAY;
+            switch (command)
+            {
+            case 'w':
+                move_direction = FORWARD;
+                break;
+            case 's':
+                move_direction = BACKWARD;
+                break;
+            case 'a':
+                move_direction = LEFT;
+                break;
+            case 'd':
+                move_direction = RIGHT;
+                break;
+
+            default:
+                break;
+            }
+            move_frogger(game_board, &x_frog, &y_frog, move_direction);
         }
         print_board(game_board);
         printf("Enter command: ");
@@ -206,6 +241,39 @@ void remove_log(struct board_tile board[SIZE][SIZE], int x, int y)
         board[x][j].type = WATER;
         i--;
     }
+}
+
+void move_frogger(struct board_tile board[SIZE][SIZE], int *x, int *y, enum direction move_direction)
+{
+    if (move_direction == STAY)
+        return;
+
+    int new_x = *x, new_y = *y;
+    switch (move_direction)
+    {
+    case FORWARD:
+        new_x--;
+        break;
+    case BACKWARD:
+        new_x++;
+        break;
+    case LEFT:
+        new_y--;
+        break;
+    case RIGHT:
+        new_y++;
+        break;
+    default:
+        break;
+    }
+
+    if (new_x < 0 || new_x >= SIZE || new_y < 0 || new_y >= SIZE)
+        return;
+
+    board[*x][*y].occupied = FALSE;
+    board[new_x][new_y].occupied = TRUE;
+    *x = new_x;
+    *y = new_y;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

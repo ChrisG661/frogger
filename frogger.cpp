@@ -108,7 +108,7 @@ int main(void)
         if (command == 'l')
         {
             scanf(" %d %d %d", &x, &y_start, &y_end);
-            if ((x > 0) && (x < 8))
+            if ((x > 0) && (x < SIZE - 1))
                 add_log(game_board, x, y_start, y_end);
 
             print_board(game_board);
@@ -117,7 +117,7 @@ int main(void)
         else if (command == 'c')
         {
             scanf(" %d", &x);
-            if ((x > 0) && (x < 8))
+            if ((x > 0) && (x < SIZE - 1))
                 clear_row(game_board, x);
 
             print_board(game_board);
@@ -126,7 +126,7 @@ int main(void)
         else if (command == 'r')
         {
             scanf(" %d %d", &x, &y);
-            if ((x > 0) && (x < 8))
+            if ((x > 0) && (x < SIZE - 1))
                 remove_log(game_board, x, y);
 
             print_board(game_board);
@@ -158,10 +158,10 @@ void init_board(struct board_tile board[SIZE][SIZE])
                 else
                     TILE.type = WATER;
             }
-            else if (row == 8)
+            else if (row == SIZE - 1)
             {
                 TILE.type = BANK;
-                if (col == 4)
+                if (col == SIZE / 2)
                     TILE.occupied = TRUE;
             }
             else

@@ -55,6 +55,7 @@ struct board_tile
 void init_board(struct board_tile board[SIZE][SIZE]);
 void add_log(struct board_tile board[SIZE][SIZE], int, int, int);
 void clear_row(struct board_tile board[SIZE][SIZE], int);
+void remove_log(struct board_tile board[SIZE][SIZE], int, int);
 
 // Prints out the current state of the board.
 void print_board(struct board_tile board[SIZE][SIZE]);
@@ -122,6 +123,15 @@ int main(void)
             print_board(game_board);
             printf("Enter command: ");
         }
+        else if (command == 'r')
+        {
+            scanf(" %d %d", &x, &y);
+            if ((x > 0) && (x < 8))
+                remove_log(game_board, x, y);
+
+            print_board(game_board);
+            printf("Enter command: ");
+        }
     }
 
     printf("Thank you for playing Frogger Game!\n");
@@ -180,6 +190,30 @@ void clear_row(struct board_tile board[SIZE][SIZE], int x)
             return;
     for (int i = 0; i < SIZE; i++)
         board[x][i].type = WATER;
+}
+
+void remove_log(struct board_tile board[SIZE][SIZE], int x, int y)
+{
+    for (int i = 0; i < SIZE; i++)
+        if (board[x][i].occupied)
+            return;
+
+    if (board[x][y].type != LOG)
+        return;
+    else
+        board[x][y].type = WATER;
+
+    int i = y + 1, j = y - 1;
+    while (board[x][i].type == LOG)
+    {
+        board[x][i].type = WATER;
+        i++;
+    }
+    while (board[x][j].type == LOG)
+    {
+        board[x][j].type = WATER;
+        i--;
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

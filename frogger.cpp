@@ -110,28 +110,21 @@ int main(void)
             scanf(" %d %d %d", &x, &y_start, &y_end);
             if ((x > 0) && (x < SIZE - 1))
                 add_log(game_board, x, y_start, y_end);
-
-            print_board(game_board);
-            printf("Enter command: ");
         }
         else if (command == 'c')
         {
             scanf(" %d", &x);
             if ((x > 0) && (x < SIZE - 1))
                 clear_row(game_board, x);
-
-            print_board(game_board);
-            printf("Enter command: ");
         }
         else if (command == 'r')
         {
             scanf(" %d %d", &x, &y);
             if ((x > 0) && (x < SIZE - 1))
                 remove_log(game_board, x, y);
-
-            print_board(game_board);
-            printf("Enter command: ");
         }
+        print_board(game_board);
+        printf("Enter command: ");
     }
 
     printf("Thank you for playing Frogger Game!\n");

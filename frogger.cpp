@@ -54,6 +54,7 @@ struct board_tile
 // Your function prototypes here
 void init_board(struct board_tile board[SIZE][SIZE]);
 void add_log(struct board_tile board[SIZE][SIZE], int, int, int);
+void clear_row(struct board_tile board[SIZE][SIZE], int);
 
 // Prints out the current state of the board.
 void print_board(struct board_tile board[SIZE][SIZE]);
@@ -112,6 +113,15 @@ int main(void)
             print_board(game_board);
             printf("Enter command: ");
         }
+        else if (command == 'c')
+        {
+            scanf(" %d", &x);
+            if ((x > 0) && (x < 8))
+                clear_row(game_board, x);
+
+            print_board(game_board);
+            printf("Enter command: ");
+        }
     }
 
     printf("Thank you for playing Frogger Game!\n");
@@ -161,6 +171,15 @@ void add_log(struct board_tile board[SIZE][SIZE], int x, int y_start, int y_end)
             return;
     for (int i = y_start; i <= y_end; i++)
         board[x][i].type = LOG;
+}
+
+void clear_row(struct board_tile board[SIZE][SIZE], int x)
+{
+    for (int i = 0; i < SIZE; i++)
+        if (board[x][i].occupied)
+            return;
+    for (int i = 0; i < SIZE; i++)
+        board[x][i].type = WATER;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

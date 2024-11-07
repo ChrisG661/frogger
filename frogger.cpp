@@ -5,7 +5,8 @@
 // Farrel Fyelo Hollans Tamaela   (01082240024)
 // Gian Jeconiah Sitompul         (01082240025)
 // Kenny Lay                      (01082240010)
-// on October 25, 2024
+// on 1) October 25, 2024 (Starter code)
+//    2) October 31, 2024 (Phase 1.3)
 //
 // TODO: Description of program
 
@@ -19,6 +20,8 @@
 #define SIZE 9
 #define TRUE 1
 #define FALSE 0
+#define XSTART 8
+#define YSTART 4
 
 // You may choose to add additional #defines here.
 #define TILE board[row][col]
@@ -50,10 +53,10 @@ struct board_tile
 
 // Your function prototypes here
 void init_board(struct board_tile board[SIZE][SIZE]);
+void add_log(struct board_tile board[SIZE][SIZE], int, int, int);
 
 // Prints out the current state of the board.
 void print_board(struct board_tile board[SIZE][SIZE]);
-void init_board(struct board_tile board[SIZE][SIZE]);
 char type_to_char(enum tile_type type);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -94,11 +97,18 @@ int main(void)
     // (Stage 1.3): Create a command loop, to read and execute commands!
     printf("Enter command: ");
     char command;
+    int x, y;
+    int y_start, y_end;
+    int x_frog = XSTART, y_frog = YSTART;
+
     while (scanf("%c\n", &command) != EOF)
     {
-        if (command != NULL)
+        if (command == 'l')
         {
-            // COMMANDS WILL BE EXECUTED HERE
+            scanf(" %d %d %d", &x, &y_start, &y_end);
+            if ((x > 0) && (x < 8))
+                add_log(game_board, x, y_start, y_end);
+
             print_board(game_board);
             printf("Enter command: ");
         }
@@ -138,6 +148,19 @@ void init_board(struct board_tile board[SIZE][SIZE])
                 TILE.type = WATER;
         }
     }
+}
+
+void add_log(struct board_tile board[SIZE][SIZE], int x, int y_start, int y_end)
+{
+    if (y_start < 0)
+        y_start = 0;
+    if (y_end > SIZE - 1)
+        y_end = SIZE - 1;
+    for (int i = 0; i < SIZE; i++)
+        if (board[x][i].type == TURTLE)
+            return;
+    for (int i = y_start; i <= y_end; i++)
+        board[x][i].type = LOG;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

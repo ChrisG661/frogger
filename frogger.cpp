@@ -75,7 +75,6 @@ int main(void)
     init_board(game_board);
 
     // Read user input and place turtles.
-    int num_turtle;
     printf("How many turtles? ");
 
     // (Stage 1.2): Scan in the turtles, and place them on the map.

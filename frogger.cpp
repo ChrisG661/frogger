@@ -102,7 +102,7 @@ int main(void)
     int y_start, y_end;
     int x_frog = XSTART, y_frog = YSTART;
 
-    while (scanf("%c\n", &command) != EOF)
+    while (scanf(" %c", &command) != EOF)
     {
         if (command == 'l')
         {

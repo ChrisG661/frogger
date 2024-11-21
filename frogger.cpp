@@ -23,6 +23,7 @@
 #define FALSE 0
 #define XSTART SIZE - 1
 #define YSTART SIZE / 2
+#define LIVES 3
 
 // You may choose to add additional #defines here.
 #define TILE board[row][col]
@@ -56,6 +57,7 @@ struct board_tile
 {
     enum tile_type type; // The type of piece it is (water, bank, etc.)
     int occupied;        // TRUE or FALSE based on if Frogger is there.
+    int bug_present;     // TRUE or FALSE based on if a bug is there.
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -114,6 +116,7 @@ int main(void)
     int x, y;
     int y_start, y_end;
     int x_frog = XSTART, y_frog = YSTART;
+    int lives = LIVES;
 
     while (scanf(" %c", &command) != EOF)
     {
@@ -134,6 +137,13 @@ int main(void)
             scanf(" %d %d", &x, &y);
             if ((x > 0) && (x < SIZE - 1))
                 remove_log(game_board, x, y);
+        }
+        else if (command == 'b')
+        {
+            int x_bug, y_bug;
+            scanf(" %d %d", &x_bug, &y_bug);
+            if ((x > 0) && (x < SIZE - 1))
+                add_bug(game_board, x_bug, y_bug);
         }
         else
         {
@@ -157,6 +167,39 @@ int main(void)
                 break;
             }
             move_frogger(game_board, &x_frog, &y_frog, move_direction);
+
+            if (game_board[x_frog][y_frog].type == LILLYPAD)
+            {
+                print_board(game_board);
+                printf("\nWahoo!! You Won!\n");
+                break;
+            }
+            else if ((game_board[x_frog][y_frog].type == WATER) ||
+                     (game_board[x_frog][y_frog].bug_present))
+            {
+                lives--;
+                print_board(game_board);
+                if (!lives)
+                {
+                    printf("\n !! GAME OVER !!\n\n");
+                    break;
+                }
+                else
+                {
+                    game_board[x_frog][y_frog].occupied = FALSE;
+                    printf("\n# LIVES LEFT: %d #\n\n", lives);
+                    x_frog = XSTART, y_frog = YSTART;
+                    game_board[x_frog][y_frog].occupied = TRUE;
+                    // print_board(game_board);
+                    // printf("Enter command: ");
+                }
+            }
+            else
+            {
+                print_board(game_board);
+                printf("Enter command: ");
+                continue;
+            }
         }
         print_board(game_board);
         printf("Enter command: ");
@@ -179,6 +222,7 @@ void init_board(struct board_tile board[SIZE][SIZE])
         for (int col = 0; col < SIZE; col++)
         {
             TILE.occupied = FALSE;
+            TILE.bug_present = FALSE;
             if (row == 0)
             {
                 if (col % 2 == 0)
@@ -277,6 +321,17 @@ void move_frogger(struct board_tile board[SIZE][SIZE], int *x, int *y, direction
     *y = new_y;
 }
 
+void add_bug(struct board_tile board[SIZE][SIZE], int x_bug, int y_bug)
+{
+    if (y_bug >= 0 && y_bug < SIZE)
+    {
+        if (board[x_bug][y_bug].type == LOG || board[x_bug][y_bug].type == TURTLE)
+        {
+            board[x_bug][y_bug].bug_present = TRUE;
+        }
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////// PROVIDED FUNCTIONS //////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -291,6 +346,10 @@ void print_board(struct board_tile board[SIZE][SIZE])
             if (TILE.occupied)
             {
                 type_char = 'F';
+            }
+            else if (TILE.bug_present)
+            {
+                type_char = 'B';
             }
             else
             {

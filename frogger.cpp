@@ -67,7 +67,8 @@ void init_board(struct board_tile board[SIZE][SIZE]);
 void add_log(struct board_tile board[SIZE][SIZE], int, int, int);
 void clear_row(struct board_tile board[SIZE][SIZE], int);
 void remove_log(struct board_tile board[SIZE][SIZE], int, int);
-void move_frogger(struct board_tile board[SIZE][SIZE], int *x, int *y, enum direction);
+void move_frogger(struct board_tile board[SIZE][SIZE], int *, int *, enum direction);
+void add_bug(struct board_tile board[SIZE][SIZE], int, int);
 
 // Prints out the current state of the board.
 void print_board(struct board_tile board[SIZE][SIZE]);
@@ -243,7 +244,7 @@ void remove_log(struct board_tile board[SIZE][SIZE], int x, int y)
     }
 }
 
-void move_frogger(struct board_tile board[SIZE][SIZE], int *x, int *y, enum direction move_direction)
+void move_frogger(struct board_tile board[SIZE][SIZE], int *x, int *y, direction move_direction)
 {
     if (move_direction == STAY)
         return;

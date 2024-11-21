@@ -140,10 +140,9 @@ int main(void)
         }
         else if (command == 'b')
         {
-            int x_bug, y_bug;
-            scanf(" %d %d", &x_bug, &y_bug);
+            scanf(" %d %d", &x, &y);
             if ((x > 0) && (x < SIZE - 1))
-                add_bug(game_board, x_bug, y_bug);
+                add_bug(game_board, x, y);
         }
         else
         {
@@ -321,13 +320,13 @@ void move_frogger(struct board_tile board[SIZE][SIZE], int *x, int *y, direction
     *y = new_y;
 }
 
-void add_bug(struct board_tile board[SIZE][SIZE], int x_bug, int y_bug)
+void add_bug(struct board_tile board[SIZE][SIZE], int x, int y)
 {
-    if (y_bug >= 0 && y_bug < SIZE)
+    if (y >= 0 && y < SIZE)
     {
-        if (board[x_bug][y_bug].type == LOG || board[x_bug][y_bug].type == TURTLE)
+        if (board[x][y].type == LOG || board[x][y].type == TURTLE)
         {
-            board[x_bug][y_bug].bug_present = TRUE;
+            board[x][y].bug_present = TRUE;
         }
     }
 }

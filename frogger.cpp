@@ -153,6 +153,11 @@ int main(void)
             if ((x > 0) && (x < SIZE - 1))
                 add_bug(game_board, x, y);
         }
+        else if (command == 'q')
+        {
+            printf("Quitting game...\n");
+            break;
+        }
         else
         {
             direction move_direction = STAY;

@@ -52,12 +52,20 @@ enum direction
 ///////////////////////////////////  STRUCTS  //////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
+// Additional structs
+
+struct bug
+{
+    enum direction direction; // The direction the bug is moving.
+};
+
 // Provided structs
 struct board_tile
 {
     enum tile_type type; // The type of piece it is (water, bank, etc.)
     int occupied;        // TRUE or FALSE based on if Frogger is there.
     int bug_present;     // TRUE or FALSE based on if a bug is there.
+    struct bug bug;      // The bug that is on the tile.
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -71,6 +79,7 @@ void clear_row(struct board_tile board[SIZE][SIZE], int);
 void remove_log(struct board_tile board[SIZE][SIZE], int, int);
 void move_frogger(struct board_tile board[SIZE][SIZE], int *, int *, enum direction);
 void add_bug(struct board_tile board[SIZE][SIZE], int, int);
+void move_bugs(struct board_tile board[SIZE][SIZE]);
 
 // Prints out the current state of the board.
 void print_board(struct board_tile board[SIZE][SIZE]);
@@ -165,7 +174,9 @@ int main(void)
             default:
                 break;
             }
+
             move_frogger(game_board, &x_frog, &y_frog, move_direction);
+            move_bugs(game_board);
 
             if (game_board[x_frog][y_frog].type == LILLYPAD)
             {
@@ -222,6 +233,7 @@ void init_board(struct board_tile board[SIZE][SIZE])
         {
             board[row][col].occupied = FALSE;
             board[row][col].bug_present = FALSE;
+            board[row][col].bug.direction = RIGHT;
             if (row == 0)
             {
                 if (col % 2 == 0)
@@ -260,7 +272,11 @@ void clear_row(struct board_tile board[SIZE][SIZE], int x)
         if (board[x][i].occupied)
             return;
     for (int i = 0; i < SIZE; i++)
+    {
         board[x][i].type = WATER;
+        board[x][i].bug_present = FALSE;
+        board[x][i].bug.direction = RIGHT;
+    }
 }
 
 void remove_log(struct board_tile board[SIZE][SIZE], int x, int y)
@@ -272,18 +288,26 @@ void remove_log(struct board_tile board[SIZE][SIZE], int x, int y)
     if (board[x][y].type != LOG)
         return;
     else
+    {
         board[x][y].type = WATER;
+        board[x][y].bug_present = FALSE;
+        board[x][y].bug.direction = RIGHT;
+    }
 
     int i = y + 1, j = y - 1;
     while (board[x][i].type == LOG)
     {
         board[x][i].type = WATER;
+        board[x][i].bug_present = FALSE;
+        board[x][i].bug.direction = RIGHT;
         i++;
     }
     while (board[x][j].type == LOG)
     {
         board[x][j].type = WATER;
-        i--;
+        board[x][j].bug_present = FALSE;
+        board[x][j].bug.direction = RIGHT;
+        j--;
     }
 }
 
@@ -327,6 +351,73 @@ void add_bug(struct board_tile board[SIZE][SIZE], int x, int y)
         if (board[x][y].type == LOG || board[x][y].type == TURTLE)
         {
             board[x][y].bug_present = TRUE;
+            board[x][y].bug.direction = RIGHT;
+        }
+    }
+}
+
+void move_bugs(struct board_tile board[SIZE][SIZE])
+{
+    for (int row = 0; row < SIZE; row++)
+    {
+        for (int col = 0; col < SIZE; col++)
+        {
+            if (board[row][col].bug_present == FALSE)
+                continue;
+
+            if (board[row][col].bug.direction == RIGHT)
+            {
+                if (col + 1 < SIZE)
+                {
+                    if (board[row][col].type == LOG || board[row][col].type == TURTLE)
+                    {
+                        if ((board[row][col + 1].type == LOG || board[row][col + 1].type == TURTLE) && !board[row][col + 1].bug_present)
+                        {
+                            board[row][col].bug_present = FALSE;
+                            board[row][col + 1].bug_present = TRUE;
+                            board[row][col + 1].bug.direction = RIGHT;
+                            col++;
+                            continue;
+                        }
+                    }
+                }
+
+                if (board[row][col - 1].bug_present == TRUE)
+                    continue;
+                if ((board[row][col - 1].type == LOG || board[row][col - 1].type == TURTLE) && !board[row][col - 1].bug_present)
+                {
+                    board[row][col].bug_present = FALSE;
+                    board[row][col - 1].bug_present = TRUE;
+                    board[row][col - 1].bug.direction = LEFT;
+                }
+            }
+            else if (board[row][col].bug.direction == LEFT)
+            {
+                if (col - 1 >= 0)
+                {
+                    if (board[row][col].type == LOG || board[row][col].type == TURTLE)
+                    {
+                        if ((board[row][col - 1].type == LOG || board[row][col - 1].type == TURTLE) && !board[row][col - 1].bug_present)
+                        {
+                            board[row][col].bug_present = FALSE;
+                            board[row][col - 1].bug_present = TRUE;
+                            board[row][col - 1].bug.direction = LEFT;
+                            continue;
+                        }
+                    }
+                }
+
+                if (board[row][col + 1].bug_present == TRUE)
+                    continue;
+
+                if ((board[row][col + 1].type == LOG || board[row][col + 1].type == TURTLE) && !board[row][col + 1].bug_present)
+                {
+                    board[row][col].bug_present = FALSE;
+                    board[row][col + 1].bug_present = TRUE;
+                    board[row][col + 1].bug.direction = RIGHT;
+                    col++;
+                }
+            }
         }
     }
 }

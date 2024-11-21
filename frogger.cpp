@@ -21,8 +21,8 @@
 #define SIZE 9
 #define TRUE 1
 #define FALSE 0
-#define XSTART 8
-#define YSTART 4
+#define XSTART SIZE - 1
+#define YSTART SIZE / 2
 
 // You may choose to add additional #defines here.
 #define TILE board[row][col]

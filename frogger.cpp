@@ -221,23 +221,23 @@ void init_board(struct board_tile board[SIZE][SIZE])
     {
         for (int col = 0; col < SIZE; col++)
         {
-            TILE.occupied = FALSE;
-            TILE.bug_present = FALSE;
+            board[row][col].occupied = FALSE;
+            board[row][col].bug_present = FALSE;
             if (row == 0)
             {
                 if (col % 2 == 0)
-                    TILE.type = LILLYPAD;
+                    board[row][col].type = LILLYPAD;
                 else
-                    TILE.type = WATER;
+                    board[row][col].type = WATER;
             }
             else if (row == SIZE - 1)
             {
-                TILE.type = BANK;
+                board[row][col].type = BANK;
                 if (col == SIZE / 2)
-                    TILE.occupied = TRUE;
+                    board[row][col].occupied = TRUE;
             }
             else
-                TILE.type = WATER;
+                board[row][col].type = WATER;
         }
     }
 }
@@ -343,17 +343,17 @@ void print_board(struct board_tile board[SIZE][SIZE])
         for (int col = 0; col < SIZE; col++)
         {
             char type_char = '\0';
-            if (TILE.occupied)
+            if (board[row][col].occupied)
             {
                 type_char = 'F';
             }
-            else if (TILE.bug_present)
+            else if (board[row][col].bug_present)
             {
                 type_char = 'B';
             }
             else
             {
-                type_char = type_to_char(TILE.type);
+                type_char = type_to_char(board[row][col].type);
             }
             printf("%c ", type_char);
         }

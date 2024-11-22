@@ -78,6 +78,8 @@ struct board_tile
 
 // Your function prototypes here
 void init_board(struct board_tile board[SIZE][SIZE]);
+void setup_board(struct board_tile board[SIZE][SIZE]);
+
 void add_turtle(struct board_tile board[SIZE][SIZE], int, int);
 void add_log(struct board_tile board[SIZE][SIZE], int, int, int);
 void clear_row(struct board_tile board[SIZE][SIZE], int);
@@ -119,6 +121,8 @@ int main(void)
         add_turtle(game_board, turtle_x, turtle_y);
     }
 
+    setup_board(game_board);
+
     // Start the game and print out the gameboard.
     cout << "Game Started" << '\n';
     print_board(game_board);
@@ -133,25 +137,9 @@ int main(void)
 
     while (cin >> command)
     {
-        if (command == 'l')
+        if (command == 'o')
         {
-            cin >> x >> y_start >> y_end;
-            add_log(game_board, x, y_start, y_end);
-        }
-        else if (command == 'c')
-        {
-            cin >> x;
-            clear_row(game_board, x);
-        }
-        else if (command == 'r')
-        {
-            cin >> x >> y;
-            remove_log(game_board, x, y);
-        }
-        else if (command == 'b')
-        {
-            cin >> x >> y;
-            add_bug(game_board, x, y);
+            setup_board(game_board);
         }
         else if (command == 'q')
         {
@@ -253,6 +241,52 @@ void init_board(struct board_tile board[SIZE][SIZE])
             else
                 board[row][col].type = WATER;
         }
+    }
+}
+
+void setup_board(struct board_tile board[SIZE][SIZE])
+{
+    char command;
+    int x, y, y_start, y_end;
+
+    cout << "Setup Mode\n";
+
+    print_board(board);
+    cout << "Enter command: ";
+    while (cin >> command)
+    {
+        if (command == 't')
+        {
+            cin >> x >> y;
+            add_turtle(board, x, y);
+        }
+        else if (command == 'l')
+        {
+            cin >> x >> y_start >> y_end;
+            add_log(board, x, y_start, y_end);
+        }
+        else if (command == 'c')
+        {
+            cin >> x;
+            clear_row(board, x);
+        }
+        else if (command == 'r')
+        {
+            cin >> x >> y;
+            remove_log(board, x, y);
+        }
+        else if (command == 'b')
+        {
+            cin >> x >> y;
+            add_bug(board, x, y);
+        }
+        else if (command == 'q')
+        {
+            cout << "Quitting setup..." << '\n';
+            break;
+        }
+        print_board(board);
+        cout << "Enter command: ";
     }
 }
 

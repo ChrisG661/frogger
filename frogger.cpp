@@ -56,7 +56,7 @@ enum direction
 
 struct bug
 {
-    int present;              // TRUE or FALSE based on if a bug is there.
+    bool present;             // TRUE or FALSE based on if a bug is there.
     enum direction direction; // The direction the bug is moving.
 };
 
@@ -80,6 +80,7 @@ void clear_row(struct board_tile board[SIZE][SIZE], int);
 void remove_log(struct board_tile board[SIZE][SIZE], int, int);
 void move_frogger(struct board_tile board[SIZE][SIZE], int *, int *, enum direction);
 void add_bug(struct board_tile board[SIZE][SIZE], int, int);
+void remove_bug(struct board_tile board[SIZE][SIZE], int, int);
 void move_bugs(struct board_tile board[SIZE][SIZE]);
 
 // Prints out the current state of the board.
@@ -289,8 +290,7 @@ void clear_row(struct board_tile board[SIZE][SIZE], int x)
     for (int i = 0; i < SIZE; i++)
     {
         board[x][i].type = WATER;
-        board[x][i].bug.present = FALSE;
-        board[x][i].bug.direction = RIGHT;
+        remove_bug(board, x, i);
     }
 }
 
@@ -308,23 +308,20 @@ void remove_log(struct board_tile board[SIZE][SIZE], int x, int y)
         else
         {
             board[x][y].type = WATER;
-            board[x][y].bug.present = FALSE;
-            board[x][y].bug.direction = RIGHT;
+            remove_bug(board, x, y);
         }
 
     int i = y + 1, j = y - 1;
     while (board[x][i].type == LOG)
     {
         board[x][i].type = WATER;
-        board[x][i].bug.present = FALSE;
-        board[x][i].bug.direction = RIGHT;
+        remove_bug(board, x, i);
         i++;
     }
     while (board[x][j].type == LOG)
     {
         board[x][j].type = WATER;
-        board[x][j].bug.present = FALSE;
-        board[x][j].bug.direction = RIGHT;
+        remove_bug(board, x, j);
         j--;
     }
 }
@@ -374,6 +371,18 @@ void add_bug(struct board_tile board[SIZE][SIZE], int x, int y)
     }
 }
 
+void remove_bug(struct board_tile board[SIZE][SIZE], int x, int y)
+{
+    if (x < 0 || x >= SIZE || y < 0 || y >= SIZE)
+        return;
+
+    if (board[x][y].bug.present)
+    {
+        board[x][y].bug.present = FALSE;
+        board[x][y].bug.direction = RIGHT;
+    }
+}
+
 void move_bugs(struct board_tile board[SIZE][SIZE])
 {
     for (int row = 0; row < SIZE; row++)
@@ -388,7 +397,7 @@ void move_bugs(struct board_tile board[SIZE][SIZE])
                 if (col + 1 < SIZE)
                 {
                     if (board[row][col].type == LOG || board[row][col].type == TURTLE)
-                    {
+            {
                         if ((board[row][col + 1].type == LOG || board[row][col + 1].type == TURTLE) && !board[row][col + 1].bug.present)
                         {
                             board[row][col].bug.present = FALSE;
@@ -403,7 +412,7 @@ void move_bugs(struct board_tile board[SIZE][SIZE])
                 if (board[row][col - 1].bug.present == TRUE)
                     continue;
                 if ((board[row][col - 1].type == LOG || board[row][col - 1].type == TURTLE) && !board[row][col - 1].bug.present)
-                {
+            {
                     board[row][col].bug.present = FALSE;
                     board[row][col - 1].bug.present = TRUE;
                     board[row][col - 1].bug.direction = LEFT;
@@ -429,8 +438,8 @@ void move_bugs(struct board_tile board[SIZE][SIZE])
                     continue;
 
                 if ((board[row][col + 1].type == LOG || board[row][col + 1].type == TURTLE) && !board[row][col + 1].bug.present)
-                {
-                    board[row][col].bug.present = FALSE;
+            {
+                board[row][col].bug.present = FALSE;
                     board[row][col + 1].bug.present = TRUE;
                     board[row][col + 1].bug.direction = RIGHT;
                     col++;

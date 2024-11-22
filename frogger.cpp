@@ -457,26 +457,19 @@ void print_board(struct board_tile board[SIZE][SIZE])
 
 char type_to_char(enum tile_type type)
 {
-    char type_char = ' ';
-    if (type == LILLYPAD)
+    switch (type)
     {
-        type_char = 'o';
+    case LILLYPAD:
+        return 'o';
+    case BANK:
+        return 'x';
+    case WATER:
+        return '~';
+    case TURTLE:
+        return 'T';
+    case LOG:
+        return 'L';
+    default:
+        return ' ';
     }
-    else if (type == BANK)
-    {
-        type_char = 'x';
-    }
-    else if (type == WATER)
-    {
-        type_char = '~';
-    }
-    else if (type == TURTLE)
-    {
-        type_char = 'T';
-    }
-    else if (type == LOG)
-    {
-        type_char = 'L';
-    }
-    return type_char;
 }

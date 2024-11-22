@@ -56,6 +56,7 @@ enum direction
 
 struct bug
 {
+    int present;              // TRUE or FALSE based on if a bug is there.
     enum direction direction; // The direction the bug is moving.
 };
 
@@ -64,7 +65,6 @@ struct board_tile
 {
     enum tile_type type; // The type of piece it is (water, bank, etc.)
     int occupied;        // TRUE or FALSE based on if Frogger is there.
-    int bug_present;     // TRUE or FALSE based on if a bug is there.
     struct bug bug;      // The bug that is on the tile.
 };
 
@@ -74,6 +74,7 @@ struct board_tile
 
 // Your function prototypes here
 void init_board(struct board_tile board[SIZE][SIZE]);
+void add_turtle(struct board_tile board[SIZE][SIZE], int, int);
 void add_log(struct board_tile board[SIZE][SIZE], int, int, int);
 void clear_row(struct board_tile board[SIZE][SIZE], int);
 void remove_log(struct board_tile board[SIZE][SIZE], int, int);
@@ -111,8 +112,7 @@ int main(void)
     for (int i = 0; i < num_turtles; i++)
     {
         scanf("%d %d", &turtle_x, &turtle_y);
-        if ((turtle_x > 0 && turtle_x < SIZE - 1) && (turtle_y >= 0 || turtle_y <= SIZE - 1) && (!game_board[turtle_x][turtle_y].occupied))
-            game_board[turtle_x][turtle_y].type = TURTLE;
+        add_turtle(game_board, turtle_x, turtle_y);
     }
 
     // Start the game and print out the gameboard.
@@ -132,26 +132,23 @@ int main(void)
         if (command == 'l')
         {
             scanf(" %d %d %d", &x, &y_start, &y_end);
-            if ((x > 0) && (x < SIZE - 1))
-                add_log(game_board, x, y_start, y_end);
+            add_log(game_board, x, y_start, y_end);
         }
         else if (command == 'c')
         {
             scanf(" %d", &x);
-            if ((x > 0) && (x < SIZE - 1))
-                clear_row(game_board, x);
+            clear_row(game_board, x);
         }
         else if (command == 'r')
         {
             scanf(" %d %d", &x, &y);
-            if ((x > 0) && (x < SIZE - 1))
-                remove_log(game_board, x, y);
+
+            remove_log(game_board, x, y);
         }
         else if (command == 'b')
         {
             scanf(" %d %d", &x, &y);
-            if ((x > 0) && (x < SIZE - 1))
-                add_bug(game_board, x, y);
+            add_bug(game_board, x, y);
         }
         else if (command == 'q')
         {
@@ -190,7 +187,7 @@ int main(void)
                 break;
             }
             else if ((game_board[x_frog][y_frog].type == WATER) ||
-                     (game_board[x_frog][y_frog].bug_present))
+                     (game_board[x_frog][y_frog].bug.present))
             {
                 lives--;
                 print_board(game_board);
@@ -237,7 +234,7 @@ void init_board(struct board_tile board[SIZE][SIZE])
         for (int col = 0; col < SIZE; col++)
         {
             board[row][col].occupied = FALSE;
-            board[row][col].bug_present = FALSE;
+            board[row][col].bug.present = FALSE;
             board[row][col].bug.direction = RIGHT;
             if (row == 0)
             {
@@ -258,59 +255,75 @@ void init_board(struct board_tile board[SIZE][SIZE])
     }
 }
 
+void add_turtle(struct board_tile board[SIZE][SIZE], int x, int y)
+{
+    if (board[x][y].occupied || x < 0 || x >= SIZE || y < 0 || y >= SIZE)
+        return;
+    if (board[x][y].type == WATER)
+        board[x][y].type = TURTLE;
+}
+
 void add_log(struct board_tile board[SIZE][SIZE], int x, int y_start, int y_end)
 {
+    if (x < 0 || x >= SIZE)
+        return;
+    for (int i = 0; i < SIZE; i++)
+        if (board[x][i].type == TURTLE)
+            return;
+
     if (y_start < 0)
         y_start = 0;
     if (y_end > SIZE - 1)
         y_end = SIZE - 1;
-    for (int i = 0; i < SIZE; i++)
-        if (board[x][i].type == TURTLE)
-            return;
     for (int i = y_start; i <= y_end; i++)
         board[x][i].type = LOG;
 }
 
 void clear_row(struct board_tile board[SIZE][SIZE], int x)
 {
+    if (x < 0 || x >= SIZE)
+        return;
     for (int i = 0; i < SIZE; i++)
         if (board[x][i].occupied)
             return;
     for (int i = 0; i < SIZE; i++)
     {
         board[x][i].type = WATER;
-        board[x][i].bug_present = FALSE;
+        board[x][i].bug.present = FALSE;
         board[x][i].bug.direction = RIGHT;
     }
 }
 
 void remove_log(struct board_tile board[SIZE][SIZE], int x, int y)
 {
+    if (x < 0 || x >= SIZE)
+        return;
+    if (board[x][y].type != LOG)
+        return;
+
     for (int i = 0; i < SIZE; i++)
         if (board[x][i].occupied)
             return;
 
-    if (board[x][y].type != LOG)
-        return;
-    else
-    {
-        board[x][y].type = WATER;
-        board[x][y].bug_present = FALSE;
-        board[x][y].bug.direction = RIGHT;
-    }
+        else
+        {
+            board[x][y].type = WATER;
+            board[x][y].bug.present = FALSE;
+            board[x][y].bug.direction = RIGHT;
+        }
 
     int i = y + 1, j = y - 1;
     while (board[x][i].type == LOG)
     {
         board[x][i].type = WATER;
-        board[x][i].bug_present = FALSE;
+        board[x][i].bug.present = FALSE;
         board[x][i].bug.direction = RIGHT;
         i++;
     }
     while (board[x][j].type == LOG)
     {
         board[x][j].type = WATER;
-        board[x][j].bug_present = FALSE;
+        board[x][j].bug.present = FALSE;
         board[x][j].bug.direction = RIGHT;
         j--;
     }
@@ -351,13 +364,13 @@ void move_frogger(struct board_tile board[SIZE][SIZE], int *x, int *y, direction
 
 void add_bug(struct board_tile board[SIZE][SIZE], int x, int y)
 {
-    if (y >= 0 && y < SIZE)
+    if (x < 0 || x >= SIZE || y < 0 || y >= SIZE)
+        return;
+
+    if (board[x][y].type == LOG || board[x][y].type == TURTLE)
     {
-        if (board[x][y].type == LOG || board[x][y].type == TURTLE)
-        {
-            board[x][y].bug_present = TRUE;
-            board[x][y].bug.direction = RIGHT;
-        }
+        board[x][y].bug.present = TRUE;
+        board[x][y].bug.direction = RIGHT;
     }
 }
 
@@ -367,7 +380,7 @@ void move_bugs(struct board_tile board[SIZE][SIZE])
     {
         for (int col = 0; col < SIZE; col++)
         {
-            if (board[row][col].bug_present == FALSE)
+            if (board[row][col].bug.present == FALSE)
                 continue;
 
             if (board[row][col].bug.direction == RIGHT)
@@ -376,10 +389,10 @@ void move_bugs(struct board_tile board[SIZE][SIZE])
                 {
                     if (board[row][col].type == LOG || board[row][col].type == TURTLE)
                     {
-                        if ((board[row][col + 1].type == LOG || board[row][col + 1].type == TURTLE) && !board[row][col + 1].bug_present)
+                        if ((board[row][col + 1].type == LOG || board[row][col + 1].type == TURTLE) && !board[row][col + 1].bug.present)
                         {
-                            board[row][col].bug_present = FALSE;
-                            board[row][col + 1].bug_present = TRUE;
+                            board[row][col].bug.present = FALSE;
+                            board[row][col + 1].bug.present = TRUE;
                             board[row][col + 1].bug.direction = RIGHT;
                             col++;
                             continue;
@@ -387,12 +400,12 @@ void move_bugs(struct board_tile board[SIZE][SIZE])
                     }
                 }
 
-                if (board[row][col - 1].bug_present == TRUE)
+                if (board[row][col - 1].bug.present == TRUE)
                     continue;
-                if ((board[row][col - 1].type == LOG || board[row][col - 1].type == TURTLE) && !board[row][col - 1].bug_present)
+                if ((board[row][col - 1].type == LOG || board[row][col - 1].type == TURTLE) && !board[row][col - 1].bug.present)
                 {
-                    board[row][col].bug_present = FALSE;
-                    board[row][col - 1].bug_present = TRUE;
+                    board[row][col].bug.present = FALSE;
+                    board[row][col - 1].bug.present = TRUE;
                     board[row][col - 1].bug.direction = LEFT;
                 }
             }
@@ -402,23 +415,23 @@ void move_bugs(struct board_tile board[SIZE][SIZE])
                 {
                     if (board[row][col].type == LOG || board[row][col].type == TURTLE)
                     {
-                        if ((board[row][col - 1].type == LOG || board[row][col - 1].type == TURTLE) && !board[row][col - 1].bug_present)
+                        if ((board[row][col - 1].type == LOG || board[row][col - 1].type == TURTLE) && !board[row][col - 1].bug.present)
                         {
-                            board[row][col].bug_present = FALSE;
-                            board[row][col - 1].bug_present = TRUE;
+                            board[row][col].bug.present = FALSE;
+                            board[row][col - 1].bug.present = TRUE;
                             board[row][col - 1].bug.direction = LEFT;
                             continue;
                         }
                     }
                 }
 
-                if (board[row][col + 1].bug_present == TRUE)
+                if (board[row][col + 1].bug.present == TRUE)
                     continue;
 
-                if ((board[row][col + 1].type == LOG || board[row][col + 1].type == TURTLE) && !board[row][col + 1].bug_present)
+                if ((board[row][col + 1].type == LOG || board[row][col + 1].type == TURTLE) && !board[row][col + 1].bug.present)
                 {
-                    board[row][col].bug_present = FALSE;
-                    board[row][col + 1].bug_present = TRUE;
+                    board[row][col].bug.present = FALSE;
+                    board[row][col + 1].bug.present = TRUE;
                     board[row][col + 1].bug.direction = RIGHT;
                     col++;
                 }
@@ -442,7 +455,7 @@ void print_board(struct board_tile board[SIZE][SIZE])
             {
                 type_char = 'F';
             }
-            else if (board[row][col].bug_present)
+            else if (board[row][col].bug.present)
             {
                 type_char = 'B';
             }

@@ -12,6 +12,9 @@
 // TODO: Description of program
 
 #include <stdio.h>
+#include <iostream>
+
+using namespace std;
 
 ////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////  CONSTANTS  /////////////////////////////////
@@ -93,67 +96,65 @@ char type_to_char(enum tile_type type);
 
 int main(void)
 {
-
-    printf("Welcome to Frogger Game!\n");
+    cout << "Welcome to Frogger Game!" << '\n';
     struct board_tile game_board[SIZE][SIZE];
 
     // (Stage 1.1) Initialise the gameboard.
     init_board(game_board);
 
     // Read user input and place turtles.
-    printf("How many turtles? ");
+    cout << "How many turtles? ";
 
     // (Stage 1.2): Scan in the turtles, and place them on the map.
     int num_turtles;
-    scanf("%d", &num_turtles);
+    cin >> num_turtles;
     int turtle_x, turtle_y;
     if (num_turtles > 0)
-        printf("Enter pairs:\n");
+        cout << "Enter pairs:" << '\n';
 
     for (int i = 0; i < num_turtles; i++)
     {
-        scanf("%d %d", &turtle_x, &turtle_y);
+        cin >> turtle_x >> turtle_y;
         add_turtle(game_board, turtle_x, turtle_y);
     }
 
     // Start the game and print out the gameboard.
-    printf("Game Started\n");
+    cout << "Game Started" << '\n';
     print_board(game_board);
 
     // (Stage 1.3): Create a command loop, to read and execute commands!
-    printf("Enter command: ");
+    cout << "Enter command: ";
     char command;
     int x, y;
     int y_start, y_end;
     int x_frog = XSTART, y_frog = YSTART;
     int lives = LIVES;
 
-    while (scanf(" %c", &command) != EOF)
+    while (cin >> command)
     {
         if (command == 'l')
         {
-            scanf(" %d %d %d", &x, &y_start, &y_end);
+            cin >> x >> y_start >> y_end;
             add_log(game_board, x, y_start, y_end);
         }
         else if (command == 'c')
         {
-            scanf(" %d", &x);
+            cin >> x;
             clear_row(game_board, x);
         }
         else if (command == 'r')
         {
-            scanf(" %d %d", &x, &y);
-
+            cin >> x >> y;
             remove_log(game_board, x, y);
         }
         else if (command == 'b')
         {
-            scanf(" %d %d", &x, &y);
+            cin >> x >> y;
             add_bug(game_board, x, y);
         }
         else if (command == 'q')
         {
-            printf("Quitting game...\n");
+            cout << "Quitting game..." << '\n';
             break;
         }
         else
@@ -184,7 +185,7 @@ int main(void)
             if (game_board[x_frog][y_frog].type == LILLYPAD)
             {
                 print_board(game_board);
-                printf("\nWahoo!! You Won!\n");
+                cout << "\nWahoo!! You Won!\n";
                 break;
             }
             else if ((game_board[x_frog][y_frog].type == WATER) ||
@@ -194,31 +195,29 @@ int main(void)
                 print_board(game_board);
                 if (!lives)
                 {
-                    printf("\n !! GAME OVER !!\n\n");
+                    cout << "\n !! GAME OVER !!\n\n";
                     break;
                 }
                 else
                 {
                     game_board[x_frog][y_frog].occupied = FALSE;
-                    printf("\n# LIVES LEFT: %d #\n\n", lives);
+                    cout << "\n# LIVES LEFT: " << lives << " #\n\n";
                     x_frog = XSTART, y_frog = YSTART;
                     game_board[x_frog][y_frog].occupied = TRUE;
-                    // print_board(game_board);
-                    // printf("Enter command: ");
                 }
             }
             else
             {
                 print_board(game_board);
-                printf("Enter command: ");
+                cout << "Enter command: ";
                 continue;
             }
         }
         print_board(game_board);
-        printf("Enter command: ");
+        cout << "Enter command: ";
     }
 
-    printf("Thank you for playing Frogger Game!\n");
+    cout << "Thank you for playing Frogger Game!" << '\n';
     return 0;
 }
 
@@ -450,9 +449,9 @@ void print_board(struct board_tile board[SIZE][SIZE])
             {
                 type_char = type_to_char(board[row][col].type);
             }
-            printf("%c ", type_char);
+            cout << type_char << " ";
         }
-        printf("\n");
+        cout << '\n';
     }
 }
 

@@ -389,61 +389,39 @@ void move_bugs(struct board_tile board[SIZE][SIZE])
     {
         for (int col = 0; col < SIZE; col++)
         {
-            if (board[row][col].bug.present == FALSE)
+            if (!board[row][col].bug.present)
                 continue;
 
-            if (board[row][col].bug.direction == RIGHT)
-            {
-                if (col + 1 < SIZE)
-                {
-                    if (board[row][col].type == LOG || board[row][col].type == TURTLE)
-            {
-                        if ((board[row][col + 1].type == LOG || board[row][col + 1].type == TURTLE) && !board[row][col + 1].bug.present)
-                        {
-                            board[row][col].bug.present = FALSE;
-                            board[row][col + 1].bug.present = TRUE;
-                            board[row][col + 1].bug.direction = RIGHT;
-                            col++;
-                            continue;
-                        }
-                    }
-                }
+            direction dir = board[row][col].bug.direction;
+            int next_col = dir == RIGHT ? col + 1 : col - 1;
 
-                if (board[row][col - 1].bug.present == TRUE)
-                    continue;
-                if ((board[row][col - 1].type == LOG || board[row][col - 1].type == TURTLE) && !board[row][col - 1].bug.present)
+            if (next_col < 0 || next_col >= SIZE)
             {
-                    board[row][col].bug.present = FALSE;
-                    board[row][col - 1].bug.present = TRUE;
-                    board[row][col - 1].bug.direction = LEFT;
-                }
+                dir = dir == RIGHT ? LEFT : RIGHT;
+                next_col = dir == RIGHT ? col + 1 : col - 1;
+                if (board[row][next_col].bug.present)
+                    continue;
             }
-            else if (board[row][col].bug.direction == LEFT)
+
+            tile_type current_type = board[row][col].type;
+            tile_type next_type = board[row][next_col].type;
+
+            if (!(next_type == LOG || next_type == TURTLE) || board[row][next_col].bug.present)
             {
-                if (col - 1 >= 0)
-                {
-                    if (board[row][col].type == LOG || board[row][col].type == TURTLE)
-                    {
-                        if ((board[row][col - 1].type == LOG || board[row][col - 1].type == TURTLE) && !board[row][col - 1].bug.present)
-                        {
-                            board[row][col].bug.present = FALSE;
-                            board[row][col - 1].bug.present = TRUE;
-                            board[row][col - 1].bug.direction = LEFT;
-                            continue;
-                        }
-                    }
-                }
-
-                if (board[row][col + 1].bug.present == TRUE)
+                dir = dir == RIGHT ? LEFT : RIGHT;
+                next_col = dir == RIGHT ? col + 1 : col - 1;
+                next_type = board[row][next_col].type;
+                if (!(next_type == LOG || next_type == TURTLE) || board[row][next_col].bug.present)
                     continue;
+            }
 
-                if ((board[row][col + 1].type == LOG || board[row][col + 1].type == TURTLE) && !board[row][col + 1].bug.present)
+            if (current_type == LOG || current_type == TURTLE)
             {
                 board[row][col].bug.present = FALSE;
-                    board[row][col + 1].bug.present = TRUE;
-                    board[row][col + 1].bug.direction = RIGHT;
+                board[row][next_col].bug.present = TRUE;
+                board[row][next_col].bug.direction = dir;
+                if (dir == RIGHT)
                     col++;
-                }
             }
         }
     }

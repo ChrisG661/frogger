@@ -1,0 +1,52 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "cppbuild",
+			"label": "C/C++: g++.exe build active file",
+			"command": "C:\\Program Files\\msys2\\ucrt64\\bin\\g++.exe",
+			"args": [
+				"-fdiagnostics-color=always",
+				"-g",
+				"${file}",
+				"-o",
+				"${fileDirname}\\${fileBasenameNoExtension}.exe"
+			],
+			"options": {
+				"cwd": "${fileDirname}"
+			},
+			"problemMatcher": [
+				"$gcc"
+			],
+			"group": "build",
+			"detail": "compiler: C:\\Program Files\\msys2\\ucrt64\\bin\\g++.exe"
+		},
+		{
+			"type": "cppbuild",
+			"label": "FTXUI C/C++: g++.exe build active file",
+			"command": "C:\\Program Files\\msys2\\ucrt64\\bin\\g++.exe",
+			"args": [
+				"-I",
+				"${workspaceFolder}\\FTXUI\\include",
+				"-L",
+				"${workspaceFolder}\\build",
+				"-fdiagnostics-color=always",
+				"-g",
+				"${file}",
+				"-o",
+				"${fileDirname}\\${fileBasenameNoExtension}.exe",
+				"-lftxui-component",
+				"-lftxui-dom",
+				"-lftxui-screen"
+			],
+			"options": {
+				"cwd": "${fileDirname}"
+			},
+			"problemMatcher": [
+				"$gcc"
+			],
+			"group": "build",
+			"detail": "compiler: C:\\Program Files\\msys2\\ucrt64\\bin\\g++.exe"
+		}
+	]
+}

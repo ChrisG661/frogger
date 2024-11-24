@@ -43,3 +43,5 @@
 *.exe
 *.out
 *.app
+
+build/

@@ -334,16 +334,15 @@ void remove_log(struct board_tile board[SIZE][SIZE], int x, int y)
         return;
     if (board[x][y].type != LOG)
         return;
+    else
+    {
+        board[x][y].type = WATER;
+        remove_bug(board, x, y);
+    }
 
     for (int i = 0; i < SIZE; i++)
         if (board[x][i].occupied)
             return;
-
-        else
-        {
-            board[x][y].type = WATER;
-            remove_bug(board, x, y);
-        }
 
     int i = y + 1, j = y - 1;
     while (board[x][i].type == LOG)

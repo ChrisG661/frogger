@@ -11,10 +11,10 @@
 //    4) November 15, 2024 (Phase 3.3)
 //    5) November 25, 2024 (Added comments)
 //
-// This program is a simple Frogger game made to fulfill the Programming 
-// Fundamentals final project. The player controls the frog to reach the 
+// This program is a simple Frogger game made to fulfill the Programming
+// Fundamentals final project. The player controls the frog to reach the
 // lilypads on the other side of the river by avoiding the water and bugs.
-// The player can move the frog using the 'w', 's', 'a', and 'd' keys. 
+// The player can move the frog using the 'w', 's', 'a', and 'd' keys.
 // The player can also place turtles, logs, and bugs on the board.
 // The player can also clear a row, remove a log, and add a bug to the board.
 // The player can quit the game by pressing 'q'.
@@ -231,13 +231,13 @@ int main(void)
 ////////////////////////////////////////////////////////////////////////////////
 
 /*
-    * Function: init_board
-    * ---------------------
-    * Initializes the board with the initial values.
-    * Sets the type of the tiles based on the row and column.
-    * 
-    * board: The 2D array representing the board.
-*/
+ * Function: init_board
+ * ---------------------
+ * Initializes the board with the initial values.
+ * Sets the type of the tiles based on the row and column.
+ *
+ * board: The 2D array representing the board.
+ */
 void init_board(struct board_tile board[SIZE][SIZE])
 {
     for (int row = 0; row < SIZE; row++)
@@ -270,15 +270,14 @@ void init_board(struct board_tile board[SIZE][SIZE])
     }
 }
 
-
 /*
-    * Function: setup_board
-    * ---------------------
-    * Receives commands from the user to setup the board.
-    * The user can add turtles, logs, bugs, clear a row, remove a log, and quit the setup.
-    * 
-    * board: The 2D array representing the board.
-*/
+ * Function: setup_board
+ * ---------------------
+ * Receives commands from the user to setup the board.
+ * The user can add turtles, logs, bugs, clear a row, remove a log, and quit the setup.
+ *
+ * board: The 2D array representing the board.
+ */
 void setup_board(struct board_tile board[SIZE][SIZE])
 {
     char command;
@@ -330,16 +329,15 @@ void setup_board(struct board_tile board[SIZE][SIZE])
     }
 }
 
-
 /*
-    * Function: add_turtle
-    * ---------------------
-    * Adds a turtle to the board at the given position.
-    * 
-    * board: The 2D array representing the board.
-    * x: The x-coordinate of the turtle.
-    * y: The y-coordinate of the turtle.
-*/
+ * Function: add_turtle
+ * ---------------------
+ * Adds a turtle to the board at the given position.
+ *
+ * board: The 2D array representing the board.
+ * x: The x-coordinate of the turtle.
+ * y: The y-coordinate of the turtle.
+ */
 void add_turtle(struct board_tile board[SIZE][SIZE], int x, int y)
 {
     // Turtle will not be added if the tile is not water.
@@ -349,17 +347,16 @@ void add_turtle(struct board_tile board[SIZE][SIZE], int x, int y)
         board[x][y].type = TURTLE;
 }
 
-
 /*
-    * Function: add_log
-    * ---------------------
-    * Adds a log to the board at the given position.
-    * 
-    * board: The 2D array representing the board.
-    * x: The x-coordinate of the log.
-    * y_start: The starting y-coordinate of the log.
-    * y_end: The ending y-coordinate of the log.
-*/
+ * Function: add_log
+ * ---------------------
+ * Adds a log to the board at the given position.
+ *
+ * board: The 2D array representing the board.
+ * x: The x-coordinate of the log.
+ * y_start: The starting y-coordinate of the log.
+ * y_end: The ending y-coordinate of the log.
+ */
 void add_log(struct board_tile board[SIZE][SIZE], int x, int y_start, int y_end)
 {
     if (x < 0 || x >= SIZE)
@@ -379,15 +376,14 @@ void add_log(struct board_tile board[SIZE][SIZE], int x, int y_start, int y_end)
         board[x][i].type = LOG;
 }
 
-
 /*
-    * Function: clear_row
-    * ---------------------
-    * Clears a row on the board.
-    * 
-    * board: The 2D array representing the board.
-    * x: The row to be cleared.
-*/
+ * Function: clear_row
+ * ---------------------
+ * Clears a row on the board.
+ *
+ * board: The 2D array representing the board.
+ * x: The row to be cleared.
+ */
 void clear_row(struct board_tile board[SIZE][SIZE], int x)
 {
     if (x < 0 || x >= SIZE)
@@ -404,16 +400,15 @@ void clear_row(struct board_tile board[SIZE][SIZE], int x)
     }
 }
 
-
 /*
-    * Function: remove_log
-    * ---------------------
-    * Removes a log from the board at the given position.
-    * 
-    * board: The 2D array representing the board.
-    * x: The x-coordinate of the log.
-    * y: The y-coordinate of the log.
-*/
+ * Function: remove_log
+ * ---------------------
+ * Removes a log from the board at the given position.
+ *
+ * board: The 2D array representing the board.
+ * x: The x-coordinate of the log.
+ * y: The y-coordinate of the log.
+ */
 void remove_log(struct board_tile board[SIZE][SIZE], int x, int y)
 {
     if (x < 0 || x >= SIZE)
@@ -447,17 +442,16 @@ void remove_log(struct board_tile board[SIZE][SIZE], int x, int y)
     }
 }
 
-
 /*
-    * Function: move_frogger
-    * ---------------------
-    * Moves the frogger on the board based on the given direction.
-    * 
-    * board: The 2D array representing the board.
-    * x: The x-coordinate of the frogger.
-    * y: The y-coordinate of the frogger.
-    * move_direction: The direction the frogger will move.
-*/
+ * Function: move_frogger
+ * ---------------------
+ * Moves the frogger on the board based on the given direction.
+ *
+ * board: The 2D array representing the board.
+ * x: The x-coordinate of the frogger.
+ * y: The y-coordinate of the frogger.
+ * move_direction: The direction the frogger will move.
+ */
 void move_frogger(struct board_tile board[SIZE][SIZE], int *x, int *y, direction move_direction)
 {
     if (move_direction == STAY)
@@ -492,16 +486,15 @@ void move_frogger(struct board_tile board[SIZE][SIZE], int *x, int *y, direction
     *y = new_y;
 }
 
-
 /*
-    * Function: add_bug
-    * ---------------------
-    * Adds a bug to the board at the given position.
-    * 
-    * board: The 2D array representing the board.
-    * x: The x-coordinate of the bug.
-    * y: The y-coordinate of the bug.
-*/
+ * Function: add_bug
+ * ---------------------
+ * Adds a bug to the board at the given position.
+ *
+ * board: The 2D array representing the board.
+ * x: The x-coordinate of the bug.
+ * y: The y-coordinate of the bug.
+ */
 void add_bug(struct board_tile board[SIZE][SIZE], int x, int y)
 {
     if (x < 0 || x >= SIZE || y < 0 || y >= SIZE)
@@ -515,16 +508,15 @@ void add_bug(struct board_tile board[SIZE][SIZE], int x, int y)
     }
 }
 
-
 /*
-    * Function: remove_bug
-    * ---------------------
-    * Removes a bug from the board at the given position.
-    * 
-    * board: The 2D array representing the board.
-    * x: The x-coordinate of the bug.
-    * y: The y-coordinate of the bug.
-*/
+ * Function: remove_bug
+ * ---------------------
+ * Removes a bug from the board at the given position.
+ *
+ * board: The 2D array representing the board.
+ * x: The x-coordinate of the bug.
+ * y: The y-coordinate of the bug.
+ */
 void remove_bug(struct board_tile board[SIZE][SIZE], int x, int y)
 {
     if (x < 0 || x >= SIZE || y < 0 || y >= SIZE)
@@ -537,14 +529,13 @@ void remove_bug(struct board_tile board[SIZE][SIZE], int x, int y)
     }
 }
 
-
 /*
-    * Function: move_bugs
-    * ---------------------
-    * Moves the bugs on the board based on the direction.
-    * 
-    * board: The 2D array representing the board.
-*/
+ * Function: move_bugs
+ * ---------------------
+ * Moves the bugs on the board based on the direction.
+ *
+ * board: The 2D array representing the board.
+ */
 void move_bugs(struct board_tile board[SIZE][SIZE])
 {
     for (int row = 0; row < SIZE; row++)
@@ -603,12 +594,12 @@ void move_bugs(struct board_tile board[SIZE][SIZE])
 ////////////////////////////////////////////////////////////////////////////////
 
 /*
-    * Function: print_board
-    * ---------------------
-    * Prints out the current state of the board.
-    * 
-    * board: The 2D array representing the board.
-*/
+ * Function: print_board
+ * ---------------------
+ * Prints out the current state of the board.
+ *
+ * board: The 2D array representing the board.
+ */
 void print_board(struct board_tile board[SIZE][SIZE])
 {
     for (int row = 0; row < SIZE; row++)
@@ -635,16 +626,15 @@ void print_board(struct board_tile board[SIZE][SIZE])
     }
 }
 
-
 /*
-    * Function: type_to_char
-    * ---------------------
-    * Converts the tile type to a character.
-    * 
-    * type: The type of the tile.
-    * 
-    * Returns: The character representation of the tile type.
-*/
+ * Function: type_to_char
+ * ---------------------
+ * Converts the tile type to a character.
+ *
+ * type: The type of the tile.
+ *
+ * Returns: The character representation of the tile type.
+ */
 char type_to_char(enum tile_type type)
 {
     switch (type)

@@ -9,8 +9,15 @@
 //    2) October 31, 2024 (Phase 1.3)
 //    3) November 7, 2024 (Phase 2.3)
 //    4) November 15, 2024 (Phase 3.3)
+//    5) November 25, 2024 (Added comments)
 //
-// TODO: Description of program
+// This program is a simple Frogger game made to fulfill the Programming 
+// Fundamentals final project. The player controls the frog to reach the 
+// lilypads on the other side of the river by avoiding the water and bugs.
+// The player can move the frog using the 'w', 's', 'a', and 'd' keys. 
+// The player can also place turtles, logs, and bugs on the board.
+// The player can also clear a row, remove a log, and add a bug to the board.
+// The player can quit the game by pressing 'q'.
 
 #include <stdio.h>
 #include <iostream>
@@ -43,6 +50,8 @@ enum tile_type
 };
 
 // Additional Enums
+
+// Direction enum for the frogger and bugs.
 enum direction
 {
     FORWARD,
@@ -58,6 +67,7 @@ enum direction
 
 // Additional structs
 
+// Bug struct to represent a bug on the board.
 struct bug
 {
     bool present;             // TRUE or FALSE based on if a bug is there.
@@ -76,7 +86,6 @@ struct board_tile
 /////////////////////////////  FUNCTION PROTOTYPES  ////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-// Your function prototypes here
 void init_board(struct board_tile board[SIZE][SIZE]);
 void setup_board(struct board_tile board[SIZE][SIZE]);
 
@@ -102,13 +111,13 @@ int main(void)
     cout << "Welcome to Frogger Game!" << '\n';
     struct board_tile game_board[SIZE][SIZE];
 
-    // (Stage 1.1) Initialise the gameboard.
+    // (Phase 1.1) Initialise the gameboard.
     init_board(game_board);
 
     // Read user input and place turtles.
     cout << "How many turtles? ";
 
-    // (Stage 1.2): Scan in the turtles, and place them on the map.
+    // (Phase 1.2): Scan in the turtles, and place them on the map.
     int num_turtles;
     cin >> num_turtles;
     int turtle_x, turtle_y;
@@ -127,7 +136,7 @@ int main(void)
     cout << "Game Started" << '\n';
     print_board(game_board);
 
-    // (Stage 1.3): Create a command loop, to read and execute commands!
+    // (Phase 1.3): Create a command loop, to read and execute commands
     cout << "Enter command: ";
     char command;
     int x, y;
@@ -148,6 +157,7 @@ int main(void)
         }
         else
         {
+            // (Phase 2.3): Implement the movement of the frogger.
             direction move_direction = STAY;
             switch (command)
             {
@@ -169,10 +179,14 @@ int main(void)
             }
 
             move_frogger(game_board, &x_frog, &y_frog, move_direction);
+
+            // (Phase 3.3): Implement the movement of the bugs.
             move_bugs(game_board);
 
+            // (Phase 3.1): Lives and winning condition.
             if (game_board[x_frog][y_frog].type == LILLYPAD)
             {
+                // Game won if the frogger reaches the lilypad.
                 print_board(game_board);
                 cout << "\nWahoo!! You Won!\n";
                 break;
@@ -180,10 +194,12 @@ int main(void)
             else if ((game_board[x_frog][y_frog].type == WATER) ||
                      (game_board[x_frog][y_frog].bug.present))
             {
+                // Lose a life if the frogger is in the water or hit by a bug.
                 lives--;
                 print_board(game_board);
                 if (!lives)
                 {
+                    // Game over if the player has no lives left.
                     cout << "\n !! GAME OVER !!\n\n";
                     break;
                 }
@@ -214,8 +230,14 @@ int main(void)
 ///////////////////////////// ADDITIONAL FUNCTIONS /////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-// TODO: Add more functions here!
-
+/*
+    * Function: init_board
+    * ---------------------
+    * Initializes the board with the initial values.
+    * Sets the type of the tiles based on the row and column.
+    * 
+    * board: The 2D array representing the board.
+*/
 void init_board(struct board_tile board[SIZE][SIZE])
 {
     for (int row = 0; row < SIZE; row++)
@@ -227,6 +249,7 @@ void init_board(struct board_tile board[SIZE][SIZE])
             board[row][col].bug.direction = RIGHT;
             if (row == 0)
             {
+                // Set the first row with even columns as lillypads.
                 if (col % 2 == 0)
                     board[row][col].type = LILLYPAD;
                 else
@@ -234,7 +257,10 @@ void init_board(struct board_tile board[SIZE][SIZE])
             }
             else if (row == SIZE - 1)
             {
+                // Set the last row as the bank.
                 board[row][col].type = BANK;
+
+                // Set the middle column of the bank as frogger.
                 if (col == SIZE / 2)
                     board[row][col].occupied = TRUE;
             }
@@ -244,6 +270,15 @@ void init_board(struct board_tile board[SIZE][SIZE])
     }
 }
 
+
+/*
+    * Function: setup_board
+    * ---------------------
+    * Receives commands from the user to setup the board.
+    * The user can add turtles, logs, bugs, clear a row, remove a log, and quit the setup.
+    * 
+    * board: The 2D array representing the board.
+*/
 void setup_board(struct board_tile board[SIZE][SIZE])
 {
     char command;
@@ -257,26 +292,31 @@ void setup_board(struct board_tile board[SIZE][SIZE])
     {
         if (command == 't')
         {
+            // (Phase 1.2) Adding turtle to the board.
             cin >> x >> y;
             add_turtle(board, x, y);
         }
         else if (command == 'l')
         {
+            // (Phase 1.3) Adding log to the board.
             cin >> x >> y_start >> y_end;
             add_log(board, x, y_start, y_end);
         }
         else if (command == 'c')
         {
+            // (Phase 2.1) Clearing a row.
             cin >> x;
             clear_row(board, x);
         }
         else if (command == 'r')
         {
+            // (Phase 2.2) Removing a log.
             cin >> x >> y;
             remove_log(board, x, y);
         }
         else if (command == 'b')
         {
+            // (Phase 3.2) Adding a bug.
             cin >> x >> y;
             add_bug(board, x, y);
         }
@@ -290,22 +330,47 @@ void setup_board(struct board_tile board[SIZE][SIZE])
     }
 }
 
+
+/*
+    * Function: add_turtle
+    * ---------------------
+    * Adds a turtle to the board at the given position.
+    * 
+    * board: The 2D array representing the board.
+    * x: The x-coordinate of the turtle.
+    * y: The y-coordinate of the turtle.
+*/
 void add_turtle(struct board_tile board[SIZE][SIZE], int x, int y)
 {
+    // Turtle will not be added if the tile is not water.
     if (board[x][y].occupied || x < 0 || x >= SIZE || y < 0 || y >= SIZE)
         return;
     if (board[x][y].type == WATER)
         board[x][y].type = TURTLE;
 }
 
+
+/*
+    * Function: add_log
+    * ---------------------
+    * Adds a log to the board at the given position.
+    * 
+    * board: The 2D array representing the board.
+    * x: The x-coordinate of the log.
+    * y_start: The starting y-coordinate of the log.
+    * y_end: The ending y-coordinate of the log.
+*/
 void add_log(struct board_tile board[SIZE][SIZE], int x, int y_start, int y_end)
 {
     if (x < 0 || x >= SIZE)
         return;
+
+    // Log will not be added if there is a turtle in the row.
     for (int i = 0; i < SIZE; i++)
         if (board[x][i].type == TURTLE)
             return;
 
+    // If y_start or y_end is out of bounds, it will be set to the edge of the board.
     if (y_start < 0)
         y_start = 0;
     if (y_end > SIZE - 1)
@@ -314,10 +379,21 @@ void add_log(struct board_tile board[SIZE][SIZE], int x, int y_start, int y_end)
         board[x][i].type = LOG;
 }
 
+
+/*
+    * Function: clear_row
+    * ---------------------
+    * Clears a row on the board.
+    * 
+    * board: The 2D array representing the board.
+    * x: The row to be cleared.
+*/
 void clear_row(struct board_tile board[SIZE][SIZE], int x)
 {
     if (x < 0 || x >= SIZE)
         return;
+
+    // Row will not be cleared if there is an occupied tile in the row.
     for (int i = 0; i < SIZE; i++)
         if (board[x][i].occupied)
             return;
@@ -328,23 +404,34 @@ void clear_row(struct board_tile board[SIZE][SIZE], int x)
     }
 }
 
+
+/*
+    * Function: remove_log
+    * ---------------------
+    * Removes a log from the board at the given position.
+    * 
+    * board: The 2D array representing the board.
+    * x: The x-coordinate of the log.
+    * y: The y-coordinate of the log.
+*/
 void remove_log(struct board_tile board[SIZE][SIZE], int x, int y)
 {
     if (x < 0 || x >= SIZE)
         return;
     if (board[x][y].type != LOG)
         return;
+    else
+    {
+        board[x][y].type = WATER;
+        remove_bug(board, x, y);
+    }
 
+    // If the row is occupied, the log will not be removed.
     for (int i = 0; i < SIZE; i++)
         if (board[x][i].occupied)
             return;
 
-        else
-        {
-            board[x][y].type = WATER;
-            remove_bug(board, x, y);
-        }
-
+    // Removes connected logs in the row.
     int i = y + 1, j = y - 1;
     while (board[x][i].type == LOG)
     {
@@ -360,6 +447,17 @@ void remove_log(struct board_tile board[SIZE][SIZE], int x, int y)
     }
 }
 
+
+/*
+    * Function: move_frogger
+    * ---------------------
+    * Moves the frogger on the board based on the given direction.
+    * 
+    * board: The 2D array representing the board.
+    * x: The x-coordinate of the frogger.
+    * y: The y-coordinate of the frogger.
+    * move_direction: The direction the frogger will move.
+*/
 void move_frogger(struct board_tile board[SIZE][SIZE], int *x, int *y, direction move_direction)
 {
     if (move_direction == STAY)
@@ -384,6 +482,7 @@ void move_frogger(struct board_tile board[SIZE][SIZE], int *x, int *y, direction
         break;
     }
 
+    // Frogger will not move if the new position is out of bounds.
     if (new_x < 0 || new_x >= SIZE || new_y < 0 || new_y >= SIZE)
         return;
 
@@ -393,11 +492,22 @@ void move_frogger(struct board_tile board[SIZE][SIZE], int *x, int *y, direction
     *y = new_y;
 }
 
+
+/*
+    * Function: add_bug
+    * ---------------------
+    * Adds a bug to the board at the given position.
+    * 
+    * board: The 2D array representing the board.
+    * x: The x-coordinate of the bug.
+    * y: The y-coordinate of the bug.
+*/
 void add_bug(struct board_tile board[SIZE][SIZE], int x, int y)
 {
     if (x < 0 || x >= SIZE || y < 0 || y >= SIZE)
         return;
 
+    // Bug will only be added if the tile is log or turtle.
     if (board[x][y].type == LOG || board[x][y].type == TURTLE)
     {
         board[x][y].bug.present = TRUE;
@@ -405,6 +515,16 @@ void add_bug(struct board_tile board[SIZE][SIZE], int x, int y)
     }
 }
 
+
+/*
+    * Function: remove_bug
+    * ---------------------
+    * Removes a bug from the board at the given position.
+    * 
+    * board: The 2D array representing the board.
+    * x: The x-coordinate of the bug.
+    * y: The y-coordinate of the bug.
+*/
 void remove_bug(struct board_tile board[SIZE][SIZE], int x, int y)
 {
     if (x < 0 || x >= SIZE || y < 0 || y >= SIZE)
@@ -417,6 +537,14 @@ void remove_bug(struct board_tile board[SIZE][SIZE], int x, int y)
     }
 }
 
+
+/*
+    * Function: move_bugs
+    * ---------------------
+    * Moves the bugs on the board based on the direction.
+    * 
+    * board: The 2D array representing the board.
+*/
 void move_bugs(struct board_tile board[SIZE][SIZE])
 {
     for (int row = 0; row < SIZE; row++)
@@ -426,13 +554,16 @@ void move_bugs(struct board_tile board[SIZE][SIZE])
             if (!board[row][col].bug.present)
                 continue;
 
+            // Retrieve the direction of the bug and the next column.
             direction dir = board[row][col].bug.direction;
             int next_col = dir == RIGHT ? col + 1 : col - 1;
 
+            // If the next column is out of bounds, the bug will change direction.
             if (next_col < 0 || next_col >= SIZE)
             {
                 dir = dir == RIGHT ? LEFT : RIGHT;
                 next_col = dir == RIGHT ? col + 1 : col - 1;
+                // If the next column is occupied by a bug, the bug will not move.
                 if (board[row][next_col].bug.present)
                     continue;
             }
@@ -440,20 +571,26 @@ void move_bugs(struct board_tile board[SIZE][SIZE])
             tile_type current_type = board[row][col].type;
             tile_type next_type = board[row][next_col].type;
 
+            // If the next tile is not log or turtle, the bug will change direction.
             if (!(next_type == LOG || next_type == TURTLE) || board[row][next_col].bug.present)
             {
                 dir = dir == RIGHT ? LEFT : RIGHT;
                 next_col = dir == RIGHT ? col + 1 : col - 1;
                 next_type = board[row][next_col].type;
+
+                // If the next tile is also out of bounds, the bug will not move.
                 if (!(next_type == LOG || next_type == TURTLE) || board[row][next_col].bug.present)
                     continue;
             }
 
+            // Move the bug to the next tile.
             if (current_type == LOG || current_type == TURTLE)
             {
                 board[row][col].bug.present = FALSE;
                 board[row][next_col].bug.present = TRUE;
                 board[row][next_col].bug.direction = dir;
+
+                // Skips the next column if the bug is moving right.
                 if (dir == RIGHT)
                     col++;
             }
@@ -465,12 +602,20 @@ void move_bugs(struct board_tile board[SIZE][SIZE])
 ////////////////////////////// PROVIDED FUNCTIONS //////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
+/*
+    * Function: print_board
+    * ---------------------
+    * Prints out the current state of the board.
+    * 
+    * board: The 2D array representing the board.
+*/
 void print_board(struct board_tile board[SIZE][SIZE])
 {
     for (int row = 0; row < SIZE; row++)
     {
         for (int col = 0; col < SIZE; col++)
         {
+            // Prioritizes printing frogger then bug after other tile types.
             char type_char = '\0';
             if (board[row][col].occupied)
             {
@@ -490,6 +635,16 @@ void print_board(struct board_tile board[SIZE][SIZE])
     }
 }
 
+
+/*
+    * Function: type_to_char
+    * ---------------------
+    * Converts the tile type to a character.
+    * 
+    * type: The type of the tile.
+    * 
+    * Returns: The character representation of the tile type.
+*/
 char type_to_char(enum tile_type type)
 {
     switch (type)

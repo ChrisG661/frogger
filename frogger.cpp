@@ -124,7 +124,6 @@ struct board_tile
 ////////////////////////////////////////////////////////////////////////////////
 
 void init_board(struct board_tile board[SIZE][SIZE]);
-void setup_board(struct board_tile board[SIZE][SIZE]);
 game_event check_state(struct board_tile board[SIZE][SIZE], int *, int *, int *, enum game_state *);
 
 void add_turtle(struct board_tile board[SIZE][SIZE], int, int);
@@ -413,126 +412,6 @@ int main(void)
     return 0;
 }
 
-int game_old(void)
-{
-    cout << "Welcome to Frogger Game!" << '\n';
-    struct board_tile game_board[SIZE][SIZE];
-
-    // (Phase 1.1) Initialise the gameboard.
-    init_board(game_board);
-
-    // Read user input and place turtles.
-    cout << "How many turtles? ";
-
-    // (Phase 1.2): Scan in the turtles, and place them on the map.
-    int num_turtles;
-    cin >> num_turtles;
-    int turtle_x, turtle_y;
-    if (num_turtles > 0)
-        cout << "Enter pairs:" << '\n';
-
-    for (int i = 0; i < num_turtles; i++)
-    {
-        cin >> turtle_x >> turtle_y;
-        add_turtle(game_board, turtle_x, turtle_y);
-    }
-
-    setup_board(game_board);
-
-    // Start the game and print out the gameboard.
-    cout << "Game Started" << '\n';
-    print_board(game_board);
-
-    // (Phase 1.3): Create a command loop, to read and execute commands
-    cout << "Enter command: ";
-    char command;
-    int x, y;
-    int y_start, y_end;
-    int x_frog = XSTART, y_frog = YSTART;
-    int lives = LIVES;
-
-    while (cin >> command)
-    {
-        if (command == 'o')
-        {
-            setup_board(game_board);
-        }
-        else if (command == 'q')
-        {
-            cout << "Quitting game..." << '\n';
-            break;
-        }
-        else
-        {
-            // (Phase 2.3): Implement the movement of the frogger.
-            direction move_direction = STAY;
-            switch (command)
-            {
-            case 'w':
-                move_direction = FORWARD;
-                break;
-            case 's':
-                move_direction = BACKWARD;
-                break;
-            case 'a':
-                move_direction = LEFT;
-                break;
-            case 'd':
-                move_direction = RIGHT;
-                break;
-
-            default:
-                break;
-            }
-
-            move_frogger(game_board, &x_frog, &y_frog, move_direction);
-
-            // (Phase 3.3): Implement the movement of the bugs.
-            move_bugs(game_board);
-
-            // (Phase 3.1): Lives and winning condition.
-            if (game_board[x_frog][y_frog].type == LILLYPAD)
-            {
-                // Game won if the frogger reaches the lilypad.
-                print_board(game_board);
-                cout << "\nWahoo!! You Won!\n";
-                break;
-            }
-            else if ((game_board[x_frog][y_frog].type == WATER) ||
-                     (game_board[x_frog][y_frog].bug.present))
-            {
-                // Lose a life if the frogger is in the water or hit by a bug.
-                lives--;
-                print_board(game_board);
-                if (!lives)
-                {
-                    // Game over if the player has no lives left.
-                    cout << "\n !! GAME OVER !!\n\n";
-                    break;
-                }
-                else
-                {
-                    game_board[x_frog][y_frog].occupied = FALSE;
-                    cout << "\n# LIVES LEFT: " << lives << " #\n\n";
-                    x_frog = XSTART, y_frog = YSTART;
-                    game_board[x_frog][y_frog].occupied = TRUE;
-                }
-            }
-            else
-            {
-                print_board(game_board);
-                cout << "Enter command: ";
-                continue;
-            }
-        }
-        print_board(game_board);
-        cout << "Enter command: ";
-    }
-
-    cout << "Thank you for playing Frogger Game!" << '\n';
-    return 0;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////// ADDITIONAL FUNCTIONS /////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -574,65 +453,6 @@ void init_board(struct board_tile board[SIZE][SIZE])
             else
                 board[row][col].type = WATER;
         }
-    }
-}
-
-/*
- * Function: setup_board
- * ---------------------
- * Receives commands from the user to setup the board.
- * The user can add turtles, logs, bugs, clear a row, remove a log, and quit the setup.
- *
- * board: The 2D array representing the board.
- */
-void setup_board(struct board_tile board[SIZE][SIZE])
-{
-    char command;
-    int x, y, y_start, y_end;
-
-    cout << "Setup Mode\n";
-
-    print_board(board);
-    cout << "Enter command: ";
-    while (cin >> command)
-    {
-        if (command == 't')
-        {
-            // (Phase 1.2) Adding turtle to the board.
-            cin >> x >> y;
-            add_turtle(board, x, y);
-        }
-        else if (command == 'l')
-        {
-            // (Phase 1.3) Adding log to the board.
-            cin >> x >> y_start >> y_end;
-            add_log(board, x, y_start, y_end);
-        }
-        else if (command == 'c')
-        {
-            // (Phase 2.1) Clearing a row.
-            cin >> x;
-            clear_row(board, x);
-        }
-        else if (command == 'r')
-        {
-            // (Phase 2.2) Removing a log.
-            cin >> x >> y;
-            remove_log(board, x, y);
-        }
-        else if (command == 'b')
-        {
-            // (Phase 3.2) Adding a bug.
-            cin >> x >> y;
-            add_bug(board, x, y);
-        }
-        else if (command == 'q')
-        {
-            cout << "Quitting setup..." << '\n';
-            break;
-        }
-        print_board(board);
-        cout << "Enter command: ";
     }
 }
 

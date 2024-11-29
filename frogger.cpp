@@ -175,24 +175,46 @@ int main(void)
     int setup_selected = 0;
     int current_tab = 0;
 
+    class Command
+    {
+    public:
+        char setup_char;
+        string command_name;
+        function<void(struct board_tile[SIZE][SIZE], int, int, int)> command_function;
+    };
+    vector<Command> commands = {
+        {'t', "Add Turtle", [](struct board_tile board[SIZE][SIZE], int x, int y, int)
+         { add_turtle(board, x, y); }},
+        {'l', "Add Log", [](struct board_tile board[SIZE][SIZE], int x, int y_start, int y_end)
+         { add_log(board, x, y_start, y_end); }},
+        {'c', "Clear Row", [](struct board_tile board[SIZE][SIZE], int x, int, int)
+         { clear_row(board, x); }},
+        {'r', "Remove Log", [](struct board_tile board[SIZE][SIZE], int x, int y, int)
+         { remove_log(board, x, y); }},
+        {'b', "Add Bug", [](struct board_tile board[SIZE][SIZE], int x, int y, int)
+         { add_bug(board, x, y); }},
+        {'B', "Remove Bug", [](struct board_tile board[SIZE][SIZE], int x, int y, int)
+         { remove_bug(board, x, y); }},
+        {'o', "Initialize Board", [](struct board_tile board[SIZE][SIZE], int, int, int)
+         { init_board(board); }},
+        {'q', "Quit Setup", [](struct board_tile[SIZE][SIZE], int, int, int) { /* No action. */ }}};
+
     string setup_command = "";
 
     int setup_cursor = 0;
     InputOption setup_input_option = InputOption::Default();
     setup_input_option.cursor_position = &setup_cursor;
     Component setup_input = Input(&setup_command, "Input command", setup_input_option);
-
     Component setup_menu = Container::Vertical(
+        [&]
         {
-            MenuEntry("Add Turtle"),
-            MenuEntry("Add Log"),
-            MenuEntry("Clear Row"),
-            MenuEntry("Remove Log"),
-            MenuEntry("Add Bug"),
-            MenuEntry("Remove Bug"),
-            MenuEntry("Initialize Board"),
-            MenuEntry("Quit Setup"),
-        },
+            Components entries;
+            for (Command &command : commands)
+            {
+                entries.push_back(MenuEntry(command.command_name));
+            }
+            return entries;
+        }(),
         &setup_selected);
 
     setup_input |= CatchEvent(
@@ -216,37 +238,21 @@ int main(void)
                     command_args[i] = command_args[i] * 10 + (setup_command[j] - '0');
                 }
 
-                switch (command)
+                auto it = find_if(commands.begin(), commands.end(), [&](const Command &cmd)
+                                  { return cmd.setup_char == command; });
+                if (it != commands.end())
                 {
-                case 't':
-                    add_turtle(game_board, command_args[0], command_args[1]);
-                    break;
-                case 'l':
-                    add_log(game_board, command_args[0], command_args[1], command_args[2]);
-                    break;
-                case 'c':
-                    clear_row(game_board, command_args[0]);
-                    break;
-                case 'r':
-                    remove_log(game_board, command_args[0], command_args[1]);
-                    break;
-                case 'b':
-                    add_bug(game_board, command_args[0], command_args[1]);
-                    break;
-                case 'B':
-                    remove_bug(game_board, command_args[0], command_args[1]);
-                    break;
-                case 'o':
-                    init_board(game_board);
-                    break;
-                case 'q':
-                    current_tab = 0;
-                    setup_command = "";
-                    return true;
-                    break;
-                default:
+                    if (command == 'q')
+                    {
+                        current_tab = 0;
+                        setup_command = "";
+                        return true;
+                    }
+                    it->command_function(game_board, command_args[0], command_args[1], command_args[2]);
+                }
+                else
+                {
                     message[0] = text("Invalid command.") | color(Color::Red);
-                    break;
                 }
                 // TODO: Add error message if command did not execute.
                 message[0] = text("Command executed.") | color(Color::Green);
@@ -270,8 +276,8 @@ int main(void)
                 }
                 if (event == Event::Return)
                 {
-                    char command_chars[8] = {'t', 'l', 'c', 'r', 'b', 'B', 'o', 'q'};
-                    setup_command = command_chars[setup_selected] + ' ';
+                    setup_command = commands[setup_selected].setup_char;
+                    setup_command += ' ';
                     setup_input->TakeFocus();
                     setup_cursor = setup_command.size();
                     return true;

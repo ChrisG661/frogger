@@ -10,6 +10,7 @@
 //    3) November 7, 2024 (Phase 2.3)
 //    4) November 15, 2024 (Phase 3.3)
 //    5) November 25, 2024 (Added comments)
+//    6) November 29, 2024 (Completed FTXUI implementation)
 //
 // This program is a simple Frogger game made to fulfill the Programming
 // Fundamentals final project. The player controls the frog to reach the

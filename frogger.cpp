@@ -124,13 +124,13 @@ struct board_tile
 ////////////////////////////////////////////////////////////////////////////////
 
 void init_board(struct board_tile board[SIZE][SIZE]);
-game_event check_state(struct board_tile board[SIZE][SIZE], int *, int *, int *, enum game_state *);
+game_event check_state(struct board_tile board[SIZE][SIZE], int &, int &, int &, enum game_state &);
 
 void add_turtle(struct board_tile board[SIZE][SIZE], int, int);
 void add_log(struct board_tile board[SIZE][SIZE], int, int, int);
 void clear_row(struct board_tile board[SIZE][SIZE], int);
 void remove_log(struct board_tile board[SIZE][SIZE], int, int);
-void move_frogger(struct board_tile board[SIZE][SIZE], int *, int *, enum direction);
+void move_frogger(struct board_tile board[SIZE][SIZE], int &, int &, enum direction);
 void add_bug(struct board_tile board[SIZE][SIZE], int, int);
 void remove_bug(struct board_tile board[SIZE][SIZE], int, int);
 void move_bugs(struct board_tile board[SIZE][SIZE]);
@@ -320,11 +320,11 @@ int main(void)
 
                 if (move_direction != STAY)
                 {
-                    move_frogger(game_board, &x_frog, &y_frog, move_direction);
+                    move_frogger(game_board, x_frog, y_frog, move_direction);
 
                     // (Phase 3.3): Implement the movement of the bugs.
                     move_bugs(game_board);
-                    current_event = check_state(game_board, &x_frog, &y_frog, &lives, &state);
+                    current_event = check_state(game_board, x_frog, y_frog, lives, state);
 
                     switch (current_event)
                     {
@@ -476,35 +476,34 @@ void init_board(struct board_tile board[SIZE][SIZE])
  * lives: The number of lives the player has.
  * state: The current state of the game.
  */
-game_event check_state(board_tile game_board[SIZE][SIZE], int *x_frog, int *y_frog, int *lives, game_state *state)
+game_event check_state(board_tile board[SIZE][SIZE], int &x_frog, int &y_frog, int &lives, game_state &state)
 {
-    board_tile *current_tile = &game_board[*x_frog][*y_frog];
-    if (current_tile->type == LILLYPAD)
+    board_tile &current_tile = board[x_frog][y_frog];
+    if (current_tile.type == LILLYPAD)
     {
-        *state = WIN;
+        state = WIN;
         return REACHED_LILLYPAD;
     }
-    else if ((current_tile->type == WATER) ||
-             (current_tile->bug.present))
+    else if ((current_tile.type == WATER) ||
+             (current_tile.bug.present))
     {
-        (*lives)--;
-        if (*lives <= 0)
+        lives--;
+        if (lives <= 0)
         {
-            *state = LOSE;
+            state = LOSE;
             return NO_LIVES;
         }
         else
         {
             game_event current_event = MOVED;
-            if (current_tile->bug.present)
+            if (current_tile.bug.present)
                 current_event = HIT_BY_BUG;
-            if (current_tile->type == WATER)
+            if (current_tile.type == WATER)
                 current_event = ON_WATER;
-            current_tile->occupied = FALSE;
-            *x_frog = XSTART;
-            *y_frog = YSTART;
-            current_tile = &game_board[*x_frog][*y_frog];
-            current_tile->occupied = TRUE;
+            current_tile.occupied = FALSE;
+            x_frog = XSTART;
+            y_frog = YSTART;
+            board[x_frog][y_frog].occupied = TRUE;
             return current_event;
         }
     }
@@ -634,12 +633,12 @@ void remove_log(struct board_tile board[SIZE][SIZE], int x, int y)
  * y: The y-coordinate of the frogger.
  * move_direction: The direction the frogger will move.
  */
-void move_frogger(struct board_tile board[SIZE][SIZE], int *x, int *y, direction move_direction)
+void move_frogger(struct board_tile board[SIZE][SIZE], int &x, int &y, direction move_direction)
 {
     if (move_direction == STAY)
         return;
 
-    int new_x = *x, new_y = *y;
+    int new_x = x, new_y = y;
     switch (move_direction)
     {
     case FORWARD:
@@ -662,10 +661,10 @@ void move_frogger(struct board_tile board[SIZE][SIZE], int *x, int *y, direction
     if (new_x < 0 || new_x >= SIZE || new_y < 0 || new_y >= SIZE)
         return;
 
-    board[*x][*y].occupied = FALSE;
+    board[x][y].occupied = FALSE;
     board[new_x][new_y].occupied = TRUE;
-    *x = new_x;
-    *y = new_y;
+    x = new_x;
+    y = new_y;
 }
 
 /*

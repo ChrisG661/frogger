@@ -10,6 +10,7 @@
 //    3) November 7, 2024 (Phase 2.3)
 //    4) November 15, 2024 (Phase 3.3)
 //    5) November 25, 2024 (Added comments)
+//    6) November 29, 2024 (Completed FTXUI implementation)
 //
 // This program is a simple Frogger game made to fulfill the Programming
 // Fundamentals final project. The player controls the frog to reach the
@@ -21,15 +22,30 @@
 
 #include <stdio.h>
 #include <iostream>
+#include <string>
+#include <fstream>
+
+#include "ftxui/component/component.hpp"
+#include "ftxui/component/component_base.hpp"
+#include "ftxui/component/component_options.hpp"
+#include "ftxui/component/event.hpp"
+#include "ftxui/component/mouse.hpp"
+#include "ftxui/component/screen_interactive.hpp"
+#include "ftxui/dom/elements.hpp"
+#include "ftxui/dom/canvas.hpp"
+#include "ftxui/screen/color.hpp"
+#include "ftxui/screen/screen.hpp"
+#include "ftxui/screen/pixel.hpp"
 
 using namespace std;
+using namespace ftxui;
 
 ////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////  CONSTANTS  /////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
 // Provided constants
-#define SIZE 9
+#define SIZE 15
 #define TRUE 1
 #define FALSE 0
 #define XSTART SIZE - 1
@@ -61,6 +77,28 @@ enum direction
     STAY
 };
 
+// Game state enum for the game loop.
+enum game_state
+{
+    START,
+    GAME,
+    SETUP,
+    WIN,
+    LOSE,
+    QUIT
+};
+
+// Game event enum for the game loop.
+enum game_event
+{
+    NO_EVENT,
+    MOVED,
+    REACHED_LILLYPAD,
+    ON_WATER,
+    HIT_BY_BUG,
+    NO_LIVES
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////  STRUCTS  //////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -72,6 +110,13 @@ struct bug
 {
     bool present;             // TRUE or FALSE based on if a bug is there.
     enum direction direction; // The direction the bug is moving.
+};
+
+struct Command
+{
+    char setup_char;
+    string command_name;
+    function<void(struct board_tile[SIZE][SIZE], int, int, int)> command_function;
 };
 
 // Provided structs
@@ -87,20 +132,32 @@ struct board_tile
 ////////////////////////////////////////////////////////////////////////////////
 
 void init_board(struct board_tile board[SIZE][SIZE]);
-void setup_board(struct board_tile board[SIZE][SIZE]);
+game_event check_state(struct board_tile board[SIZE][SIZE], int &, int &, int &, enum game_state &);
 
 void add_turtle(struct board_tile board[SIZE][SIZE], int, int);
 void add_log(struct board_tile board[SIZE][SIZE], int, int, int);
 void clear_row(struct board_tile board[SIZE][SIZE], int);
 void remove_log(struct board_tile board[SIZE][SIZE], int, int);
-void move_frogger(struct board_tile board[SIZE][SIZE], int *, int *, enum direction);
+void move_frogger(struct board_tile board[SIZE][SIZE], int &, int &, enum direction);
 void add_bug(struct board_tile board[SIZE][SIZE], int, int);
 void remove_bug(struct board_tile board[SIZE][SIZE], int, int);
 void move_bugs(struct board_tile board[SIZE][SIZE]);
 
 // Prints out the current state of the board.
-void print_board(struct board_tile board[SIZE][SIZE]);
-char type_to_char(enum tile_type type);
+Element print_board(struct board_tile board[SIZE][SIZE]);
+Pixel type_to_pixel(enum tile_type type);
+
+// FTXUI component functions
+Component create_board_canvas(struct board_tile game_board[SIZE][SIZE], int &x_frog,
+                              int &y_frog, int &lives, game_state &state, game_event &event,
+                              Element message[2], int &current_tab);
+Component create_game_sidebar(int &lives);
+Component create_setup_sidebar(struct board_tile game_board[SIZE][SIZE], vector<Command> &commands,
+                               int &setup_selected, int &setup_cursor, string &setup_command,
+                               Element message[2], int &current_tab);
+Component create_game_container(Component &board_canvas, Component &sidebar);
+Component create_message_bar(Element message[2]);
+Component create_keypress_box(string &key_pressed);
 
 ////////////////////////////////////////////////////////////////////////////////
 //////////////////////////  FUNCTION IMPLEMENTATIONS  //////////////////////////
@@ -108,122 +165,308 @@ char type_to_char(enum tile_type type);
 
 int main(void)
 {
-    cout << "Welcome to Frogger Game!" << '\n';
     struct board_tile game_board[SIZE][SIZE];
-
-    // (Phase 1.1) Initialise the gameboard.
     init_board(game_board);
 
-    // Read user input and place turtles.
-    cout << "How many turtles? ";
-
-    // (Phase 1.2): Scan in the turtles, and place them on the map.
-    int num_turtles;
-    cin >> num_turtles;
-    int turtle_x, turtle_y;
-    if (num_turtles > 0)
-        cout << "Enter pairs:" << '\n';
-
-    for (int i = 0; i < num_turtles; i++)
-    {
-        cin >> turtle_x >> turtle_y;
-        add_turtle(game_board, turtle_x, turtle_y);
-    }
-
-    setup_board(game_board);
-
-    // Start the game and print out the gameboard.
-    cout << "Game Started" << '\n';
-    print_board(game_board);
-
-    // (Phase 1.3): Create a command loop, to read and execute commands
-    cout << "Enter command: ";
-    char command;
-    int x, y;
-    int y_start, y_end;
+    game_state state = GAME;
+    game_event current_event = NO_EVENT;
     int x_frog = XSTART, y_frog = YSTART;
     int lives = LIVES;
+    string key_pressed = " ";
+    Element message[2] = {text(""), text("")};
+    int setup_selected = 0, setup_cursor = 0;
+    string setup_command = "";
+    int current_tab = 0;
 
-    while (cin >> command)
-    {
-        if (command == 'o')
+    ScreenInteractive screen = ScreenInteractive::Fullscreen();
+
+    Component game_sidebar = create_game_sidebar(lives);
+
+    vector<Command> commands = {
+        {'t', "Add Turtle", [](struct board_tile board[SIZE][SIZE], int x, int y, int)
+         { add_turtle(board, x, y); }},
+        {'l', "Add Log", [](struct board_tile board[SIZE][SIZE], int x, int y_start, int y_end)
+         { add_log(board, x, y_start, y_end); }},
+        {'c', "Clear Row", [](struct board_tile board[SIZE][SIZE], int x, int, int)
+         { clear_row(board, x); }},
+        {'r', "Remove Log", [](struct board_tile board[SIZE][SIZE], int x, int y, int)
+         { remove_log(board, x, y); }},
+        {'b', "Add Bug", [](struct board_tile board[SIZE][SIZE], int x, int y, int)
+         { add_bug(board, x, y); }},
+        {'B', "Remove Bug", [](struct board_tile board[SIZE][SIZE], int x, int y, int)
+         { remove_bug(board, x, y); }},
+        {'o', "Initialize Board", [](struct board_tile board[SIZE][SIZE], int, int, int)
+         { init_board(board); }},
+        {'q', "Quit Setup", [](struct board_tile[SIZE][SIZE], int, int, int) { /* No action. */ }}};
+
+    Component setup_sidebar =
+        create_setup_sidebar(game_board, commands, setup_selected,
+                             setup_cursor, setup_command, message, current_tab);
+    Component sidebar = Container::Tab(
         {
-            setup_board(game_board);
-        }
-        else if (command == 'q')
-        {
-            cout << "Quitting game..." << '\n';
-            break;
-        }
-        else
-        {
-            // (Phase 2.3): Implement the movement of the frogger.
-            direction move_direction = STAY;
-            switch (command)
+            game_sidebar,
+            setup_sidebar,
+        },
+        &current_tab);
+    Component board_canvas =
+        create_board_canvas(game_board, x_frog, y_frog, lives,
+                            state, current_event, message, current_tab);
+    Component game_container = create_game_container(board_canvas, sidebar);
+    Component message_bar = create_message_bar(message);
+    Component key_pressed_box = create_keypress_box(key_pressed);
+
+    Component game_renderer =
+        Renderer(game_container, [&]
+                 { return vbox(
+                       {
+                           text("Frogger Game") | hcenter,
+                           separator(),
+                           filler(),
+                           game_container->Render() |
+                               center,
+                           filler(),
+                           hbox(
+                               {key_pressed_box->Render(),
+                                message_bar->Render() | xflex_grow}),
+                       }); });
+
+    Component main_renderer =
+        game_renderer | CatchEvent(
+                            [&](Event event)
+                            {
+                                if (event.is_mouse())
+                                {
+                                    return true;
+                                }
+                                if (event.is_character())
+                                {
+                                    key_pressed = event.character();
+                                }
+                                if (event == Event::CtrlQ)
+                                {
+                                    message[0] = text("Thank you for playing Frogger Game!");
+                                    screen.ExitLoopClosure()();
+                                    return true;
+                                }
+
+                                if (event == Event::Character('o'))
+                                {
+                                    current_tab = 1 - current_tab;
+                                    return true;
+                                }
+                                return false;
+                            });
+
+    screen.Loop(main_renderer);
+
+    return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+///////////////////////////// ///FTXUI FUNCTIONS ///////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+Component create_board_canvas(struct board_tile game_board[SIZE][SIZE], int &x_frog,
+                              int &y_frog, int &lives, game_state &state,
+                              game_event &current_event, Element message[2], int &current_tab)
+{
+    Component board_canvas = Renderer([&, game_board]
+                                      { return print_board(game_board); });
+    board_canvas |=
+        CatchEvent(
+            [&, game_board, message](Event event)
             {
-            case 'w':
-                move_direction = FORWARD;
-                break;
-            case 's':
-                move_direction = BACKWARD;
-                break;
-            case 'a':
-                move_direction = LEFT;
-                break;
-            case 'd':
-                move_direction = RIGHT;
-                break;
+                if (current_tab == 1)
+                    return false;
 
-            default:
-                break;
-            }
+                direction move_direction = STAY;
+                if (event == Event::Character('w'))
+                    move_direction = FORWARD;
+                else if (event == Event::Character('s'))
+                    move_direction = BACKWARD;
+                else if (event == Event::Character('a'))
+                    move_direction = LEFT;
+                else if (event == Event::Character('d'))
+                    move_direction = RIGHT;
 
-            move_frogger(game_board, &x_frog, &y_frog, move_direction);
-
-            // (Phase 3.3): Implement the movement of the bugs.
-            move_bugs(game_board);
-
-            // (Phase 3.1): Lives and winning condition.
-            if (game_board[x_frog][y_frog].type == LILLYPAD)
-            {
-                // Game won if the frogger reaches the lilypad.
-                print_board(game_board);
-                cout << "\nWahoo!! You Won!\n";
-                break;
-            }
-            else if ((game_board[x_frog][y_frog].type == WATER) ||
-                     (game_board[x_frog][y_frog].bug.present))
-            {
-                // Lose a life if the frogger is in the water or hit by a bug.
-                lives--;
-                print_board(game_board);
-                if (!lives)
+                if (move_direction != STAY)
                 {
-                    // Game over if the player has no lives left.
-                    cout << "\n !! GAME OVER !!\n\n";
-                    break;
+                    move_frogger(game_board, x_frog, y_frog, move_direction);
+
+                    // (Phase 3.3): Implement the movement of the bugs.
+                    move_bugs(game_board);
+                    current_event = check_state(game_board, x_frog, y_frog, lives, state);
+
+                    switch (current_event)
+                    {
+                    case REACHED_LILLYPAD:
+                        message[0] = text("You won!");
+                        break;
+                    case ON_WATER:
+                        message[0] = text("You fell in the water!") | color(Color::Red);
+                        break;
+                    case HIT_BY_BUG:
+                        message[0] = text("You were hit by a bug!") | color(Color::Orange1);
+                        break;
+                    case NO_LIVES:
+                        message[0] = text("You ran out of lives!") | color(Color::Red);
+                        break;
+                    case MOVED:
+                        message[0] = text("You moved.");
+                        break;
+                    default:
+                        message[0] = text("");
+                        break;
+                    }
+
+                    if (state == WIN || state == LOSE)
+                    {
+                        message[0] = text(state == WIN ? "You won!" : "You lost!");
+                        // screen.ExitLoopClosure()();
+                    }
+                    return true;
+                }
+                return false;
+            });
+    return board_canvas;
+}
+
+Component create_game_sidebar(int &lives)
+{
+    Component game_sidebar =
+        Renderer([&]
+                 { return vbox(
+                       {filler(),
+                        text("Lives:"),
+                        hbox([&]
+                             { Elements hearts;
+                                 for (int i = 0; i < lives; i++)
+                                     hearts.push_back(text("💗"));
+                                 return hearts; }())}); });
+    return game_sidebar;
+}
+
+Component create_setup_sidebar(struct board_tile game_board[SIZE][SIZE], vector<Command> &commands,
+                               int &setup_selected, int &setup_cursor, string &setup_command,
+                               Element message[2], int &current_tab)
+{
+    InputOption setup_input_option = InputOption::Default();
+    setup_input_option.cursor_position = &setup_cursor;
+    Component setup_input = Input(&setup_command, "Input command", setup_input_option);
+    Component setup_menu = Container::Vertical(
+        [&]
+        {
+            Components entries;
+            for (Command &command : commands)
+                entries.push_back(MenuEntry(command.command_name));
+            return entries;
+        }(),
+        &setup_selected);
+
+    setup_input |= CatchEvent(
+        [&, game_board, setup_menu, message](Event event)
+        {
+            if (event == Event::Return)
+            {
+                if (setup_command.empty())
+                    return false;
+                int command_args[3] = {0, 0, 0};
+                char command = setup_command[0];
+
+                int i = 0;
+                for (int j = 2; j < setup_command.size(); j++)
+                {
+                    if (setup_command[j] == ' ')
+                    {
+                        i++;
+                        continue;
+                    }
+                    command_args[i] = command_args[i] * 10 + (setup_command[j] - '0');
+                }
+
+                auto it = find_if(commands.begin(), commands.end(), [&](const Command &cmd)
+                                  { return cmd.setup_char == command; });
+                if (it != commands.end())
+                {
+                    if (command == 'q')
+                    {
+                        current_tab = 0;
+                        setup_command = "";
+                        return true;
+                    }
+                    it->command_function(game_board, command_args[0], command_args[1], command_args[2]);
                 }
                 else
                 {
-                    game_board[x_frog][y_frog].occupied = FALSE;
-                    cout << "\n# LIVES LEFT: " << lives << " #\n\n";
-                    x_frog = XSTART, y_frog = YSTART;
-                    game_board[x_frog][y_frog].occupied = TRUE;
+                    message[0] = text("Invalid command.") | color(Color::Red);
                 }
+                // TODO: Add error message if command did not execute.
+                message[0] = text("Command executed.") | color(Color::Green);
+                setup_command = "";
+                setup_menu->TakeFocus();
+                return true;
             }
-            else
-            {
-                print_board(game_board);
-                cout << "Enter command: ";
-                continue;
-            }
-        }
-        print_board(game_board);
-        cout << "Enter command: ";
-    }
+            return false;
+        });
 
-    cout << "Thank you for playing Frogger Game!" << '\n';
-    return 0;
+    setup_menu |=
+        CatchEvent(
+            [&, setup_input](Event event)
+            {
+                if (event.is_character())
+                {
+                    setup_input->TakeFocus();
+                    setup_command = event.character();
+                    setup_cursor = setup_command.size();
+                    return true;
+                }
+                if (event == Event::Return)
+                {
+                    setup_command = commands[setup_selected].setup_char;
+                    setup_command += ' ';
+                    setup_input->TakeFocus();
+                    setup_cursor = setup_command.size();
+                    return true;
+                }
+                return false;
+            });
+
+    Component setup_sidebar =
+        Renderer(Container::Vertical({setup_menu, setup_input}), [&, setup_menu, setup_input]
+                 { return vbox({hbox(text("Selected = "), text(string(1, commands[setup_selected].setup_char))),
+                                separator(),
+                                setup_menu->Render() | frame,
+                                filler(),
+                                setup_input->Render()}); });
+    return setup_sidebar;
+}
+
+Component create_game_container(Component &board_canvas, Component &sidebar)
+{
+    Component game_container =
+        Renderer(Container::Stacked({sidebar, board_canvas}),
+                 [&, board_canvas, sidebar]
+                 { return hbox({board_canvas->Render() | center | size(WIDTH, EQUAL, 36) | size(HEIGHT, EQUAL, 17) | border,
+                                sidebar->Render() | border | size(WIDTH, GREATER_THAN, 20)}); });
+    return game_container;
+}
+
+Component create_message_bar(Element message[2])
+{
+    Component message_bar =
+        Renderer([&, message]
+                 { return hbox({message[0],
+                                message[1]}) |
+                          size(HEIGHT, EQUAL, 1) | xflex_shrink | border; });
+    return message_bar;
+}
+
+Component create_keypress_box(string &key_pressed)
+{
+    Component keypress_box =
+        Renderer([&]
+                 { return text(key_pressed) | center | bold | size(HEIGHT, EQUAL, 1) | size(WIDTH, EQUAL, 3) | border; });
+    return keypress_box;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -271,62 +514,49 @@ void init_board(struct board_tile board[SIZE][SIZE])
 }
 
 /*
- * Function: setup_board
+ * Function: check_state
  * ---------------------
- * Receives commands from the user to setup the board.
- * The user can add turtles, logs, bugs, clear a row, remove a log, and quit the setup.
+ * Checks the state of the game based on the frogger's position.
+ * Updates the game state and returns the game event.
  *
  * board: The 2D array representing the board.
+ * x_frog: The x-coordinate of the frogger.
+ * y_frog: The y-coordinate of the frogger.
+ * lives: The number of lives the player has.
+ * state: The current state of the game.
  */
-void setup_board(struct board_tile board[SIZE][SIZE])
+game_event check_state(board_tile board[SIZE][SIZE], int &x_frog, int &y_frog, int &lives, game_state &state)
 {
-    char command;
-    int x, y, y_start, y_end;
-
-    cout << "Setup Mode\n";
-
-    print_board(board);
-    cout << "Enter command: ";
-    while (cin >> command)
+    board_tile &current_tile = board[x_frog][y_frog];
+    if (current_tile.type == LILLYPAD)
     {
-        if (command == 't')
-        {
-            // (Phase 1.2) Adding turtle to the board.
-            cin >> x >> y;
-            add_turtle(board, x, y);
-        }
-        else if (command == 'l')
-        {
-            // (Phase 1.3) Adding log to the board.
-            cin >> x >> y_start >> y_end;
-            add_log(board, x, y_start, y_end);
-        }
-        else if (command == 'c')
-        {
-            // (Phase 2.1) Clearing a row.
-            cin >> x;
-            clear_row(board, x);
-        }
-        else if (command == 'r')
-        {
-            // (Phase 2.2) Removing a log.
-            cin >> x >> y;
-            remove_log(board, x, y);
-        }
-        else if (command == 'b')
-        {
-            // (Phase 3.2) Adding a bug.
-            cin >> x >> y;
-            add_bug(board, x, y);
-        }
-        else if (command == 'q')
-        {
-            cout << "Quitting setup..." << '\n';
-            break;
-        }
-        print_board(board);
-        cout << "Enter command: ";
+        state = WIN;
+        return REACHED_LILLYPAD;
     }
+    else if ((current_tile.type == WATER) ||
+             (current_tile.bug.present))
+    {
+        lives--;
+        if (lives <= 0)
+        {
+            state = LOSE;
+            return NO_LIVES;
+        }
+        else
+        {
+            game_event current_event = MOVED;
+            if (current_tile.bug.present)
+                current_event = HIT_BY_BUG;
+            if (current_tile.type == WATER)
+                current_event = ON_WATER;
+            current_tile.occupied = FALSE;
+            x_frog = XSTART;
+            y_frog = YSTART;
+            board[x_frog][y_frog].occupied = TRUE;
+            return current_event;
+        }
+    }
+    return MOVED;
 }
 
 /*
@@ -341,7 +571,7 @@ void setup_board(struct board_tile board[SIZE][SIZE])
 void add_turtle(struct board_tile board[SIZE][SIZE], int x, int y)
 {
     // Turtle will not be added if the tile is not water.
-    if (board[x][y].occupied || x < 0 || x >= SIZE || y < 0 || y >= SIZE)
+    if (board[x][y].occupied || x < 1 || x >= SIZE - 1 || y < 0 || y >= SIZE)
         return;
     if (board[x][y].type == WATER)
         board[x][y].type = TURTLE;
@@ -359,7 +589,7 @@ void add_turtle(struct board_tile board[SIZE][SIZE], int x, int y)
  */
 void add_log(struct board_tile board[SIZE][SIZE], int x, int y_start, int y_end)
 {
-    if (x < 0 || x >= SIZE)
+    if (x < 1 || x >= SIZE - 1)
         return;
 
     // Log will not be added if there is a turtle in the row.
@@ -386,7 +616,7 @@ void add_log(struct board_tile board[SIZE][SIZE], int x, int y_start, int y_end)
  */
 void clear_row(struct board_tile board[SIZE][SIZE], int x)
 {
-    if (x < 0 || x >= SIZE)
+    if (x < 1 || x >= SIZE - 2)
         return;
 
     // Row will not be cleared if there is an occupied tile in the row.
@@ -411,7 +641,7 @@ void clear_row(struct board_tile board[SIZE][SIZE], int x)
  */
 void remove_log(struct board_tile board[SIZE][SIZE], int x, int y)
 {
-    if (x < 0 || x >= SIZE)
+    if (x < 1 || x >= SIZE - 1)
         return;
     if (board[x][y].type != LOG)
         return;
@@ -452,12 +682,12 @@ void remove_log(struct board_tile board[SIZE][SIZE], int x, int y)
  * y: The y-coordinate of the frogger.
  * move_direction: The direction the frogger will move.
  */
-void move_frogger(struct board_tile board[SIZE][SIZE], int *x, int *y, direction move_direction)
+void move_frogger(struct board_tile board[SIZE][SIZE], int &x, int &y, direction move_direction)
 {
     if (move_direction == STAY)
         return;
 
-    int new_x = *x, new_y = *y;
+    int new_x = x, new_y = y;
     switch (move_direction)
     {
     case FORWARD:
@@ -480,10 +710,10 @@ void move_frogger(struct board_tile board[SIZE][SIZE], int *x, int *y, direction
     if (new_x < 0 || new_x >= SIZE || new_y < 0 || new_y >= SIZE)
         return;
 
-    board[*x][*y].occupied = FALSE;
+    board[x][y].occupied = FALSE;
     board[new_x][new_y].occupied = TRUE;
-    *x = new_x;
-    *y = new_y;
+    x = new_x;
+    y = new_y;
 }
 
 /*
@@ -497,7 +727,7 @@ void move_frogger(struct board_tile board[SIZE][SIZE], int *x, int *y, direction
  */
 void add_bug(struct board_tile board[SIZE][SIZE], int x, int y)
 {
-    if (x < 0 || x >= SIZE || y < 0 || y >= SIZE)
+    if (x < 1 || x >= SIZE - 1 || y < 0 || y >= SIZE)
         return;
 
     // Bug will only be added if the tile is log or turtle.
@@ -519,7 +749,7 @@ void add_bug(struct board_tile board[SIZE][SIZE], int x, int y)
  */
 void remove_bug(struct board_tile board[SIZE][SIZE], int x, int y)
 {
-    if (x < 0 || x >= SIZE || y < 0 || y >= SIZE)
+    if (x < 1 || x >= SIZE - 1 || y < 0 || y >= SIZE)
         return;
 
     if (board[x][y].bug.present)
@@ -538,7 +768,7 @@ void remove_bug(struct board_tile board[SIZE][SIZE], int x, int y)
  */
 void move_bugs(struct board_tile board[SIZE][SIZE])
 {
-    for (int row = 0; row < SIZE; row++)
+    for (int row = 1; row < SIZE - 1; row++)
     {
         for (int col = 0; col < SIZE; col++)
         {
@@ -596,60 +826,87 @@ void move_bugs(struct board_tile board[SIZE][SIZE])
 /*
  * Function: print_board
  * ---------------------
- * Prints out the current state of the board.
+ * Returns a canvas with the current state of the board.
  *
  * board: The 2D array representing the board.
  */
-void print_board(struct board_tile board[SIZE][SIZE])
+Element print_board(struct board_tile board[SIZE][SIZE])
 {
+    auto c = Canvas(SIZE * 4, SIZE * 4);
     for (int row = 0; row < SIZE; row++)
     {
         for (int col = 0; col < SIZE; col++)
         {
             // Prioritizes printing frogger then bug after other tile types.
-            char type_char = '\0';
+            Pixel type_pixel;
             if (board[row][col].occupied)
             {
-                type_char = 'F';
+                type_pixel.background_color = Color::Green;
+                type_pixel.character = "🐸";
             }
             else if (board[row][col].bug.present)
             {
-                type_char = 'B';
+                type_pixel = type_to_pixel(board[row][col].type);
+                type_pixel.foreground_color = Color::Red;
+                type_pixel.character = "🐞";
             }
             else
             {
-                type_char = type_to_char(board[row][col].type);
+                type_pixel = type_to_pixel(board[row][col].type);
             }
-            cout << type_char << " ";
+            c.DrawPixel(col * 4, row * 4, type_pixel);
         }
-        cout << '\n';
     }
+    return canvas(move(c));
 }
 
 /*
- * Function: type_to_char
+ * Function: type_to_pixel
  * ---------------------
- * Converts the tile type to a character.
+ * Converts the tile type to a canvas pixel.
  *
  * type: The type of the tile.
  *
- * Returns: The character representation of the tile type.
+ * Returns: The pixel representation of the tile type.
  */
-char type_to_char(enum tile_type type)
+Pixel type_to_pixel(enum tile_type type)
 {
+    Pixel p;
+    p.bold = TRUE;
+
+    // Pixel must be 2 characters long
     switch (type)
     {
     case LILLYPAD:
-        return 'o';
+        p.foreground_color = Color::Green;
+        p.background_color = Color::DarkGreen;
+        p.character = "ↈ ";
+        break;
     case BANK:
-        return 'x';
+        p.foreground_color = Color::Yellow;
+        p.background_color = Color::Yellow;
+        p.character = "XX";
+        break;
     case WATER:
-        return '~';
+        p.foreground_color = Color::Blue;
+        p.background_color = Color::DarkBlue;
+        p.bold = FALSE;
+        p.character = "\u259A\u259A";
+        break;
     case TURTLE:
-        return 'T';
+        p.foreground_color = Color::Green;
+        p.background_color = Color::Green;
+        p.character = "🐢";
+        break;
     case LOG:
-        return 'L';
+        p.foreground_color = Color::DarkOrange;
+        p.background_color = Color::Orange3;
+        p.character = "LL";
+        break;
     default:
-        return ' ';
+        p.foreground_color = Color::White;
+        p.foreground_color = Color::White;
+        p.character = "  ";
     }
+    return p;
 }

@@ -111,6 +111,13 @@ struct bug
     enum direction direction; // The direction the bug is moving.
 };
 
+struct Command
+{
+    char setup_char;
+    string command_name;
+    function<void(struct board_tile[SIZE][SIZE], int, int, int)> command_function;
+};
+
 // Provided structs
 struct board_tile
 {
@@ -139,6 +146,18 @@ void move_bugs(struct board_tile board[SIZE][SIZE]);
 Element print_board(struct board_tile board[SIZE][SIZE]);
 Pixel type_to_pixel(enum tile_type type);
 
+// FTXUI component functions
+Component create_board_canvas(struct board_tile game_board[SIZE][SIZE], int &x_frog,
+                              int &y_frog, int &lives, game_state &state, game_event &event,
+                              Element message[2], int &current_tab);
+Component create_game_sidebar(int &lives);
+Component create_setup_sidebar(struct board_tile game_board[SIZE][SIZE], vector<Command> &commands,
+                               int &setup_selected, int &setup_cursor, string &setup_command,
+                               Element message[2], int &current_tab);
+Component create_game_container(Component &board_canvas, Component &sidebar);
+Component create_message_bar(Element message[2]);
+Component create_keypress_box(string &key_pressed);
+
 ////////////////////////////////////////////////////////////////////////////////
 //////////////////////////  FUNCTION IMPLEMENTATIONS  //////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
@@ -154,34 +173,14 @@ int main(void)
     int lives = LIVES;
     string key_pressed = " ";
     Element message[2] = {text(""), text("")};
+    int setup_selected = 0, setup_cursor = 0;
+    string setup_command = "";
+    int current_tab = 0;
 
     ScreenInteractive screen = ScreenInteractive::Fullscreen();
 
-    Component board_canvas =
-        Renderer([&]
-                 { return print_board(game_board); });
+    Component game_sidebar = create_game_sidebar(lives);
 
-    Component game_sidebar =
-        Renderer([&]
-                 { return vbox(
-                       {filler(),
-                        text("Lives:"),
-                        hbox([&]
-                             { Elements hearts;
-                                 for (int i = 0; i < lives; i++)
-                                     hearts.push_back(text("💗"));
-                                 return hearts; }())}); });
-
-    int setup_selected = 0;
-    int current_tab = 0;
-
-    class Command
-    {
-    public:
-        char setup_char;
-        string command_name;
-        function<void(struct board_tile[SIZE][SIZE], int, int, int)> command_function;
-    };
     vector<Command> commands = {
         {'t', "Add Turtle", [](struct board_tile board[SIZE][SIZE], int x, int y, int)
          { add_turtle(board, x, y); }},
@@ -199,111 +198,82 @@ int main(void)
          { init_board(board); }},
         {'q', "Quit Setup", [](struct board_tile[SIZE][SIZE], int, int, int) { /* No action. */ }}};
 
-    string setup_command = "";
-
-    int setup_cursor = 0;
-    InputOption setup_input_option = InputOption::Default();
-    setup_input_option.cursor_position = &setup_cursor;
-    Component setup_input = Input(&setup_command, "Input command", setup_input_option);
-    Component setup_menu = Container::Vertical(
-        [&]
-        {
-            Components entries;
-            for (Command &command : commands)
-            {
-                entries.push_back(MenuEntry(command.command_name));
-            }
-            return entries;
-        }(),
-        &setup_selected);
-
-    setup_input |= CatchEvent(
-        [&](Event event)
-        {
-            if (event == Event::Return)
-            {
-                if (setup_command.empty())
-                    return false;
-                int command_args[3] = {0, 0, 0};
-                char command = setup_command[0];
-
-                int i = 0;
-                for (int j = 2; j < setup_command.size(); j++)
-                {
-                    if (setup_command[j] == ' ')
-                    {
-                        i++;
-                        continue;
-                    }
-                    command_args[i] = command_args[i] * 10 + (setup_command[j] - '0');
-                }
-
-                auto it = find_if(commands.begin(), commands.end(), [&](const Command &cmd)
-                                  { return cmd.setup_char == command; });
-                if (it != commands.end())
-                {
-                    if (command == 'q')
-                    {
-                        current_tab = 0;
-                        setup_command = "";
-                        return true;
-                    }
-                    it->command_function(game_board, command_args[0], command_args[1], command_args[2]);
-                }
-                else
-                {
-                    message[0] = text("Invalid command.") | color(Color::Red);
-                }
-                // TODO: Add error message if command did not execute.
-                message[0] = text("Command executed.") | color(Color::Green);
-                setup_command = "";
-                setup_menu->TakeFocus();
-                return true;
-            }
-            return false;
-        });
-
-    setup_menu |=
-        CatchEvent(
-            [&](Event event)
-            {
-                if (event.is_character())
-                {
-                    setup_input->TakeFocus();
-                    setup_command = event.character();
-                    setup_cursor = setup_command.size();
-                    return true;
-                }
-                if (event == Event::Return)
-                {
-                    setup_command = commands[setup_selected].setup_char;
-                    setup_command += ' ';
-                    setup_input->TakeFocus();
-                    setup_cursor = setup_command.size();
-                    return true;
-                }
-                return false;
-            });
-
     Component setup_sidebar =
-        Renderer(Container::Vertical({setup_menu, setup_input}), [&]
-                 { return vbox({hbox(text("selected = "), text(std::to_string(setup_selected))),
-                                separator(),
-                                setup_menu->Render() | frame,
-                                filler(),
-                                setup_input->Render()}); });
-
+        create_setup_sidebar(game_board, commands, setup_selected,
+                             setup_cursor, setup_command, message, current_tab);
     Component sidebar = Container::Tab(
         {
             game_sidebar,
             setup_sidebar,
         },
         &current_tab);
+    Component board_canvas =
+        create_board_canvas(game_board, x_frog, y_frog, lives,
+                            state, current_event, message, current_tab);
+    Component game_container = create_game_container(board_canvas, sidebar);
+    Component message_bar = create_message_bar(message);
+    Component key_pressed_box = create_keypress_box(key_pressed);
 
+    Component game_renderer =
+        Renderer(game_container, [&]
+                 { return vbox(
+                       {
+                           text("Frogger Game") | hcenter,
+                           separator(),
+                           filler(),
+                           game_container->Render() |
+                               center,
+                           filler(),
+                           hbox(
+                               {key_pressed_box->Render(),
+                                message_bar->Render() | xflex_grow}),
+                       }); });
+
+    Component main_renderer =
+        game_renderer | CatchEvent(
+                            [&](Event event)
+                            {
+                                if (event.is_mouse())
+                                {
+                                    return true;
+                                }
+                                if (event.is_character())
+                                {
+                                    key_pressed = event.character();
+                                }
+                                if (event == Event::CtrlQ)
+                                {
+                                    message[0] = text("Thank you for playing Frogger Game!");
+                                    screen.ExitLoopClosure()();
+                                    return true;
+                                }
+
+                                if (event == Event::Character('o'))
+                                {
+                                    current_tab = 1 - current_tab;
+                                    return true;
+                                }
+                                return false;
+                            });
+
+    screen.Loop(main_renderer);
+
+    return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+///////////////////////////// ///FTXUI FUNCTIONS ///////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+Component create_board_canvas(struct board_tile game_board[SIZE][SIZE], int &x_frog,
+                              int &y_frog, int &lives, game_state &state,
+                              game_event &current_event, Element message[2], int &current_tab)
+{
+    Component board_canvas = Renderer([&, game_board]
+                                      { return print_board(game_board); });
     board_canvas |=
         CatchEvent(
-
-            [&](Event event)
+            [&, game_board, message](Event event)
             {
                 if (current_tab == 1)
                     return false;
@@ -357,67 +327,145 @@ int main(void)
                 }
                 return false;
             });
+    return board_canvas;
+}
 
+Component create_game_sidebar(int &lives)
+{
+    Component game_sidebar =
+        Renderer([&]
+                 { return vbox(
+                       {filler(),
+                        text("Lives:"),
+                        hbox([&]
+                             { Elements hearts;
+                                 for (int i = 0; i < lives; i++)
+                                     hearts.push_back(text("💗"));
+                                 return hearts; }())}); });
+    return game_sidebar;
+}
+
+Component create_setup_sidebar(struct board_tile game_board[SIZE][SIZE], vector<Command> &commands,
+                               int &setup_selected, int &setup_cursor, string &setup_command,
+                               Element message[2], int &current_tab)
+{
+    InputOption setup_input_option = InputOption::Default();
+    setup_input_option.cursor_position = &setup_cursor;
+    Component setup_input = Input(&setup_command, "Input command", setup_input_option);
+    Component setup_menu = Container::Vertical(
+        [&]
+        {
+            Components entries;
+            for (Command &command : commands)
+                entries.push_back(MenuEntry(command.command_name));
+            return entries;
+        }(),
+        &setup_selected);
+
+    setup_input |= CatchEvent(
+        [&, game_board, setup_menu, message](Event event)
+        {
+            if (event == Event::Return)
+            {
+                if (setup_command.empty())
+                    return false;
+                int command_args[3] = {0, 0, 0};
+                char command = setup_command[0];
+
+                int i = 0;
+                for (int j = 2; j < setup_command.size(); j++)
+                {
+                    if (setup_command[j] == ' ')
+                    {
+                        i++;
+                        continue;
+                    }
+                    command_args[i] = command_args[i] * 10 + (setup_command[j] - '0');
+                }
+
+                auto it = find_if(commands.begin(), commands.end(), [&](const Command &cmd)
+                                  { return cmd.setup_char == command; });
+                if (it != commands.end())
+                {
+                    if (command == 'q')
+                    {
+                        current_tab = 0;
+                        setup_command = "";
+                        return true;
+                    }
+                    it->command_function(game_board, command_args[0], command_args[1], command_args[2]);
+                }
+                else
+                {
+                    message[0] = text("Invalid command.") | color(Color::Red);
+                }
+                // TODO: Add error message if command did not execute.
+                message[0] = text("Command executed.") | color(Color::Green);
+                setup_command = "";
+                setup_menu->TakeFocus();
+                return true;
+            }
+            return false;
+        });
+
+    setup_menu |=
+        CatchEvent(
+            [&, setup_input](Event event)
+            {
+                if (event.is_character())
+                {
+                    setup_input->TakeFocus();
+                    setup_command = event.character();
+                    setup_cursor = setup_command.size();
+                    return true;
+                }
+                if (event == Event::Return)
+                {
+                    setup_command = commands[setup_selected].setup_char;
+                    setup_command += ' ';
+                    setup_input->TakeFocus();
+                    setup_cursor = setup_command.size();
+                    return true;
+                }
+                return false;
+            });
+
+    Component setup_sidebar =
+        Renderer(Container::Vertical({setup_menu, setup_input}), [&, setup_menu, setup_input]
+                 { return vbox({hbox(text("Selected = "), text(string(1, commands[setup_selected].setup_char))),
+                                separator(),
+                                setup_menu->Render() | frame,
+                                filler(),
+                                setup_input->Render()}); });
+    return setup_sidebar;
+}
+
+Component create_game_container(Component &board_canvas, Component &sidebar)
+{
     Component game_container =
-        Renderer(Container::Stacked({sidebar, board_canvas}), [&]
+        Renderer(Container::Stacked({sidebar, board_canvas}),
+                 [&, board_canvas, sidebar]
                  { return hbox({board_canvas->Render() | center | size(WIDTH, EQUAL, 36) | size(HEIGHT, EQUAL, 17) | border,
                                 sidebar->Render() | border | size(WIDTH, GREATER_THAN, 20)}); });
+    return game_container;
+}
 
+Component create_message_bar(Element message[2])
+{
     Component message_bar =
-        Renderer([&]
+        Renderer([&, message]
                  { return hbox({message[0],
                                 message[1]}) |
                           size(HEIGHT, EQUAL, 1) | xflex_shrink | border; });
+    return message_bar;
+}
 
-    Component key_pressed_box =
+Component create_keypress_box(string &key_pressed)
+{
+    Component keypress_box =
         Renderer([&]
                  { return text(key_pressed) | center | bold | size(HEIGHT, EQUAL, 1) | size(WIDTH, EQUAL, 3) | border; });
-
-    Component game_renderer =
-        Renderer(game_container, [&]
-                 { return vbox(
-                       {
-                           text("Frogger Game") | hcenter,
-                           separator(),
-                           filler(),
-                           game_container->Render() |
-                               center,
-                           filler(),
-                           hbox(
-                               {key_pressed_box->Render(),
-                                message_bar->Render() | xflex_grow}),
-                       }); });
-
-    Component main_renderer =
-        game_renderer | CatchEvent(
-                            [&](Event event)
-                            {
-                                if (event.is_mouse())
-                                {
-                                    return true;
-                                }
-                                if (event.is_character())
-                                {
-                                    key_pressed = event.character();
-                                }
-                                if (event == Event::CtrlQ)
-                                {
-                                    message[0] = text("Thank you for playing Frogger Game!");
-                                    screen.ExitLoopClosure()();
-                                    return true;
-                                }
-
-                                if (event == Event::Character('o'))
-                                {
-                                    current_tab = 1 - current_tab;
-                                    return true;
-                                }
-                                return false;
-                            });
-
-    screen.Loop(main_renderer);
-
-    return 0;
+    return keypress_box;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

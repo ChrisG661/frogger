@@ -515,7 +515,7 @@ game_event check_state(board_tile game_board[SIZE][SIZE], int *x_frog, int *y_fr
 void add_turtle(struct board_tile board[SIZE][SIZE], int x, int y)
 {
     // Turtle will not be added if the tile is not water.
-    if (board[x][y].occupied || x < 0 || x >= SIZE || y < 0 || y >= SIZE)
+    if (board[x][y].occupied || x < 1 || x >= SIZE - 1 || y < 0 || y >= SIZE)
         return;
     if (board[x][y].type == WATER)
         board[x][y].type = TURTLE;
@@ -533,7 +533,7 @@ void add_turtle(struct board_tile board[SIZE][SIZE], int x, int y)
  */
 void add_log(struct board_tile board[SIZE][SIZE], int x, int y_start, int y_end)
 {
-    if (x < 0 || x >= SIZE)
+    if (x < 1 || x >= SIZE - 1)
         return;
 
     // Log will not be added if there is a turtle in the row.
@@ -560,7 +560,7 @@ void add_log(struct board_tile board[SIZE][SIZE], int x, int y_start, int y_end)
  */
 void clear_row(struct board_tile board[SIZE][SIZE], int x)
 {
-    if (x < 0 || x >= SIZE)
+    if (x < 1 || x >= SIZE - 2)
         return;
 
     // Row will not be cleared if there is an occupied tile in the row.
@@ -585,7 +585,7 @@ void clear_row(struct board_tile board[SIZE][SIZE], int x)
  */
 void remove_log(struct board_tile board[SIZE][SIZE], int x, int y)
 {
-    if (x < 0 || x >= SIZE)
+    if (x < 1 || x >= SIZE - 1)
         return;
     if (board[x][y].type != LOG)
         return;
@@ -671,7 +671,7 @@ void move_frogger(struct board_tile board[SIZE][SIZE], int *x, int *y, direction
  */
 void add_bug(struct board_tile board[SIZE][SIZE], int x, int y)
 {
-    if (x < 0 || x >= SIZE || y < 0 || y >= SIZE)
+    if (x < 1 || x >= SIZE - 1 || y < 0 || y >= SIZE)
         return;
 
     // Bug will only be added if the tile is log or turtle.
@@ -693,7 +693,7 @@ void add_bug(struct board_tile board[SIZE][SIZE], int x, int y)
  */
 void remove_bug(struct board_tile board[SIZE][SIZE], int x, int y)
 {
-    if (x < 0 || x >= SIZE || y < 0 || y >= SIZE)
+    if (x < 1 || x >= SIZE - 1 || y < 0 || y >= SIZE)
         return;
 
     if (board[x][y].bug.present)

@@ -248,6 +248,8 @@ int main(void)
                     message[0] = text("Invalid command.") | color(Color::Red);
                     break;
                 }
+                // TODO: Add error message if command did not execute.
+                message[0] = text("Command executed.") | color(Color::Green);
                 setup_command = "";
                 setup_menu->TakeFocus();
                 return true;

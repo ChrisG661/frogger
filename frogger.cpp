@@ -714,7 +714,7 @@ void remove_bug(struct board_tile board[SIZE][SIZE], int x, int y)
  */
 void move_bugs(struct board_tile board[SIZE][SIZE])
 {
-    for (int row = 0; row < SIZE; row++)
+    for (int row = 1; row < SIZE - 1; row++)
     {
         for (int col = 0; col < SIZE; col++)
         {

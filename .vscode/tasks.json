@@ -47,6 +47,24 @@
 			],
 			"group": "build",
 			"detail": "compiler: C:\\Program Files\\msys2\\ucrt64\\bin\\g++.exe"
-		}
+		},
+		{
+			"type": "cmake",
+			"label": "CMake: build debug",
+			"command": "build",
+			"targets": [
+				"all"
+			],
+			"preset": "Debug",
+			"group": "build",
+			"problemMatcher": [
+				"$gcc"
+			],
+			"detail": "Build using CMake in Debug configuration",
+			"options": {
+				"jobs": 18,
+				"cwd": "${workspaceFolder}",
+			}
+		},
 	]
 }

@@ -1,0 +1,51 @@
+{
+    "version": 8,
+    "configurePresets": [
+        {
+            "name": "Common",
+            "description": "General settings",
+            "hidden": true,
+            "binaryDir": "${sourceDir}/build/${presetName}"
+        },
+        {
+            "name": "Debug",
+            "displayName": "GCC Debug",
+            "description": "Using gcc compiler, debug build",
+            "inherits": "Common",
+            "generator": "MinGW Makefiles",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "gcc",
+                "CMAKE_CXX_COMPILER": "g++",
+                "CMAKE_BUILD_TYPE": "Debug",
+                "CMAKE_BUILD_PARRALLEL_LEVEL": "18"
+            }
+        },
+        {
+            "name": "Release",
+            "displayName": "GCC Release",
+            "description": "Using gcc compiler, release build",
+            "inherits": "Common",
+            "generator": "MinGW Makefiles",
+            "cacheVariables": {
+                "CMAKE_C_COMPILER": "gcc",
+                "CMAKE_CXX_COMPILER": "g++",
+                "CMAKE_BUILD_TYPE": "Release",
+                "CMAKE_BUILD_PARRALLEL_LEVEL": "18"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "Debug",
+            "description": "",
+            "displayName": "",
+            "configurePreset": "Debug"
+        },
+        {
+            "name": "Release",
+            "description": "",
+            "displayName": "",
+            "configurePreset": "Release"
+        }
+    ]
+}

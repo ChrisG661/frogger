@@ -31,7 +31,7 @@
             "name": "FTXUI g++.exe - Build and debug active file",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${fileDirname}\\${fileBasenameNoExtension}.exe",
+            "program": "${fileDirname}\\build\\Debug\\${fileBasenameNoExtension}.exe",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
@@ -48,9 +48,9 @@
                     "text": "set charset UTF-8"
                 }
             ],
-            "preLaunchTask": "FTXUI C/C++: g++.exe build active file",
+            //"preLaunchTask": "FTXUI C/C++: g++.exe build active file",
+            "preLaunchTask": "CMake: build debug",
             "miDebuggerPath": "C:\\Program Files\\msys2\\ucrt64\\bin\\gdb.exe",
         },
-        
     ]
 }

@@ -28,3 +28,5 @@ set_target_properties(frogger PROPERTIES
     CXX_STANDARD_REQUIRED YES
     CXX_EXTENSIONS NO
 )
+
+set(CMAKE_CONFIGURATION_TYPES "Debug;Release")

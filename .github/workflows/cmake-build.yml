@@ -5,6 +5,7 @@ on:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -15,24 +16,12 @@ jobs:
       matrix:
         os: [windows-latest]
         build_type: [Release]
-        c_compiler: [gcc, clang, cl]
+        c_compiler: [clang]
+        cpp_compiler: [clang++]
         include:
           - os: windows-latest
-            c_compiler: cl
-            cpp_compiler: cl
-          - os: ubuntu-latest
-            c_compiler: gcc
-            cpp_compiler: g++
-          - os: ubuntu-latest
             c_compiler: clang
             cpp_compiler: clang++
-        exclude:
-          - os: windows-latest
-            c_compiler: gcc
-          - os: windows-latest
-            c_compiler: clang
-          - os: ubuntu-latest
-            c_compiler: cl
 
     steps:
     - uses: actions/checkout@v4
@@ -41,8 +30,9 @@ jobs:
       id: strings
       shell: bash
       run: |
-        echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
-
+        echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT";
+        echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT;
+    
     - name: Configure CMake
       run: >
         cmake -B ${{ steps.strings.outputs.build-output-dir }}
@@ -50,6 +40,7 @@ jobs:
         -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
         -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
         -S ${{ github.workspace }}
+        -G "MinGW Makefiles"
 
     - name: Build
       run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config ${{ matrix.build_type }}
@@ -59,4 +50,28 @@ jobs:
       with:
         name: Executable
         path: ${{ steps.strings.outputs.build-output-dir }}/frogger.exe
-          
+
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.strings.outputs.sha_short }}
+        release_name: Release ${{ steps.strings.outputs.sha_short }}
+        draft: false
+        prerelease: false
+        body: |
+          ## Changes in this release:
+          ${{ github.event.head_commit.message }}
+
+    - name: Upload Release Asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ${{ steps.strings.outputs.build-output-dir }}/frogger.exe
+        asset_name: frogger.exe
+        asset_content_type: application/octet-stream
+

@@ -142,6 +142,7 @@ void move_frogger(struct board_tile board[SIZE][SIZE], int &, int &, enum direct
 void add_bug(struct board_tile board[SIZE][SIZE], int, int);
 void remove_bug(struct board_tile board[SIZE][SIZE], int, int);
 void move_bugs(struct board_tile board[SIZE][SIZE]);
+void add_bank(struct board_tile board[SIZE][SIZE], int);
 
 // Prints out the current state of the board.
 Element print_board(struct board_tile board[SIZE][SIZE]);
@@ -195,6 +196,8 @@ int main(void)
          { add_bug(board, x, y); }},
         {'B', "Remove Bug", [](struct board_tile board[SIZE][SIZE], int x, int y, int)
          { remove_bug(board, x, y); }},
+        {'k', "Add Bank", [](struct board_tile board[SIZE][SIZE], int x, int, int)
+         { add_bank(board, x); }},
         {'o', "Initialize Board", [](struct board_tile board[SIZE][SIZE], int, int, int)
          { init_board(board); }},
         {'q', "Quit Setup", [](struct board_tile[SIZE][SIZE], int, int, int) { /* No action. */ }}};
@@ -817,6 +820,28 @@ void move_bugs(struct board_tile board[SIZE][SIZE])
             }
         }
     }
+}
+
+/*
+ * Function: add_bank
+ * ---------------------
+ * Adds a bank to the board at the given position.
+ *
+ * board: The 2D array representing the board.
+ * x: The x-coordinate of the bank.
+ */
+void add_bank(struct board_tile board[SIZE][SIZE], int x)
+{
+    if (x < 1 || x >= SIZE - 1)
+        return;
+
+    
+    // Log will not be added if there is a turtle in the row.
+    for (int i = 0; i < SIZE; i++)
+        if (board[x][i].type == TURTLE)
+            return;
+    for (int i = 0; i < SIZE; i++)
+        board[x][i].type = BANK;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

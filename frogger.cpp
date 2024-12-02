@@ -27,6 +27,7 @@
 #include <thread>
 #include <mutex>
 #include <chrono>
+#include <vector>
 
 #include "ftxui/component/component.hpp"
 #include "ftxui/component/component_base.hpp"
@@ -59,6 +60,7 @@ using namespace ftxui;
 #define TILE board[row][col]
 #define TPS 20            // 20 ticks per second
 #define MOVE_COOLDOWN 200 // 200 milliseconds delay
+#define BUGS_MOVE_TICKS 5 // 5 ticks per bug movement
 
 // Provided Enums
 enum tile_type
@@ -177,6 +179,13 @@ Component create_setup_sidebar(struct board_tile game_board[SIZE][SIZE], vector<
 Component create_game_container(Component &board_canvas, Component &sidebar);
 Component create_message_bar(Element message[2]);
 Component create_keypress_box(string &key_pressed);
+
+////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////  GLOBAL VARIABLES  //////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+vector<pair<int, int>> bugs_positions; // Vector to store bug positions
+int bugs_move_counter = 0;             // Counter to track bug movement
 
 ////////////////////////////////////////////////////////////////////////////////
 //////////////////////////  FUNCTION IMPLEMENTATIONS  //////////////////////////
@@ -820,6 +829,7 @@ void add_bug(struct board_tile board[SIZE][SIZE], int x, int y)
     {
         board[x][y].bug.present = TRUE;
         board[x][y].bug.direction = RIGHT;
+        bugs_positions.push_back({x, y});
     }
 }
 
@@ -841,6 +851,7 @@ void remove_bug(struct board_tile board[SIZE][SIZE], int x, int y)
     {
         board[x][y].bug.present = FALSE;
         board[x][y].bug.direction = RIGHT;
+        bugs_positions.erase(remove(bugs_positions.begin(), bugs_positions.end(), make_pair(x, y)), bugs_positions.end());
     }
 }
 
@@ -853,55 +864,71 @@ void remove_bug(struct board_tile board[SIZE][SIZE], int x, int y)
  */
 void move_bugs(struct board_tile board[SIZE][SIZE])
 {
-    for (int row = 1; row < SIZE - 1; row++)
+    if (bugs_move_counter < BUGS_MOVE_TICKS)
     {
-        for (int col = 0; col < SIZE; col++)
+        bugs_move_counter++;
+        return;
+    }
+    bugs_move_counter = 0;
+
+    vector<pair<int, int>> new_bugs_positions; // Vector to store new bug positions
+
+    // Sort bugs_positions to ensure bugs are moved from top to bottom, left to right
+    sort(bugs_positions.begin(), bugs_positions.end(),
+         [](pair<int, int> &p1, pair<int, int> &p2)
+         { return tie(p1.second, p1.first) < tie(p2.second, p2.first); });
+
+    for (auto &[row, col] : bugs_positions)
+    {
+        if (!board[row][col].bug.present)
+            continue;
+
+        // Retrieve the direction of the bug and the next column.
+        direction dir = board[row][col].bug.direction;
+        int next_col = dir == RIGHT ? col + 1 : col - 1;
+
+        // If the next column is out of bounds, the bug will change direction.
+        if (next_col < 0 || next_col >= SIZE)
         {
-            if (!board[row][col].bug.present)
+            dir = dir == RIGHT ? LEFT : RIGHT;
+            next_col = dir == RIGHT ? col + 1 : col - 1;
+            // If the next column is occupied by a bug, the bug will not move.
+            if (board[row][next_col].bug.present)
+            {
+                new_bugs_positions.push_back({row, col});
                 continue;
-
-            // Retrieve the direction of the bug and the next column.
-            direction dir = board[row][col].bug.direction;
-            int next_col = dir == RIGHT ? col + 1 : col - 1;
-
-            // If the next column is out of bounds, the bug will change direction.
-            if (next_col < 0 || next_col >= SIZE)
-            {
-                dir = dir == RIGHT ? LEFT : RIGHT;
-                next_col = dir == RIGHT ? col + 1 : col - 1;
-                // If the next column is occupied by a bug, the bug will not move.
-                if (board[row][next_col].bug.present)
-                    continue;
-            }
-
-            tile_type current_type = board[row][col].type;
-            tile_type next_type = board[row][next_col].type;
-
-            // If the next tile is not log or turtle, the bug will change direction.
-            if (!(next_type == LOG || next_type == TURTLE) || board[row][next_col].bug.present)
-            {
-                dir = dir == RIGHT ? LEFT : RIGHT;
-                next_col = dir == RIGHT ? col + 1 : col - 1;
-                next_type = board[row][next_col].type;
-
-                // If the next tile is also out of bounds, the bug will not move.
-                if (!(next_type == LOG || next_type == TURTLE) || board[row][next_col].bug.present)
-                    continue;
-            }
-
-            // Move the bug to the next tile.
-            if (current_type == LOG || current_type == TURTLE)
-            {
-                board[row][col].bug.present = FALSE;
-                board[row][next_col].bug.present = TRUE;
-                board[row][next_col].bug.direction = dir;
-
-                // Skips the next column if the bug is moving right.
-                if (dir == RIGHT)
-                    col++;
             }
         }
+
+        tile_type current_type = board[row][col].type;
+        tile_type next_type = board[row][next_col].type;
+
+        // If the next tile is not log or turtle, the bug will change direction.
+        if (!(next_type == LOG || next_type == TURTLE) || board[row][next_col].bug.present)
+        {
+            dir = dir == RIGHT ? LEFT : RIGHT;
+            next_col = dir == RIGHT ? col + 1 : col - 1;
+            next_type = board[row][next_col].type;
+
+            // If the next tile is also out of bounds, the bug will not move.
+            if (!(next_type == LOG || next_type == TURTLE) || board[row][next_col].bug.present)
+            {
+                new_bugs_positions.push_back({row, col});
+                continue;
+            }
+        }
+
+        // Move the bug to the next tile.
+        if (current_type == LOG || current_type == TURTLE)
+        {
+            board[row][col].bug.present = FALSE;
+            board[row][next_col].bug.present = TRUE;
+            board[row][next_col].bug.direction = dir;
+            new_bugs_positions.push_back({row, next_col}); // Add new bug position to vector
+        }
     }
+
+    bugs_positions = new_bugs_positions; // Update bugs_positions with new positions
 }
 
 /*

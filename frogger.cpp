@@ -487,9 +487,9 @@ Component create_setup_sidebar(struct board_tile game_board[SIZE][SIZE], game_st
 
                 if (command == 'O')
                 {
-                    string filename = setup_command.substr(2);
-                    if (filename == "") // Default filename
-                        filename = "game_board.frogger";
+                    string filename = "game_board.frogger";
+                    if (setup_command.size() > 2)
+                        filename = setup_command.substr(2);
                     string boardfile = load_file(filename);
                     if (boardfile == "")
                     {
@@ -805,7 +805,7 @@ void add_log(struct board_tile board[SIZE][SIZE], int x, int y_start, int y_end)
  */
 void clear_row(struct board_tile board[SIZE][SIZE], int x)
 {
-    if (x < 1 || x >= SIZE - 2)
+    if (x < 1 || x >= SIZE - 1)
         return;
 
     // Row will not be cleared if there is an occupied tile in the row.

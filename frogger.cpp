@@ -24,6 +24,9 @@
 #include <iostream>
 #include <string>
 #include <fstream>
+#include <thread>
+#include <mutex>
+#include <chrono>
 
 #include "ftxui/component/component.hpp"
 #include "ftxui/component/component_base.hpp"
@@ -52,8 +55,9 @@ using namespace ftxui;
 #define YSTART SIZE / 2
 #define LIVES 3
 
-// You may choose to add additional #defines here.
+// Additional constants
 #define TILE board[row][col]
+#define TPS 20 // 20 ticks per second
 
 // Provided Enums
 enum tile_type
@@ -133,6 +137,10 @@ struct board_tile
 
 void init_board(struct board_tile board[SIZE][SIZE]);
 game_event check_state(struct board_tile board[SIZE][SIZE], int &, int &, int &, enum game_state &);
+
+mutex game_mutex;
+void game_update_thread(struct board_tile board[SIZE][SIZE], int &, int &,
+                        int &, game_state &, game_event &, ScreenInteractive &, Element[2]);
 
 void add_turtle(struct board_tile board[SIZE][SIZE], int, int);
 void add_log(struct board_tile board[SIZE][SIZE], int, int, int);
@@ -255,14 +263,84 @@ int main(void)
                                 if (event == Event::Character('o'))
                                 {
                                     current_tab = 1 - current_tab;
+                                    if (current_tab == 1)
+                                        state = SETUP;
+                                    else
+                                        state = GAME;
                                     return true;
                                 }
                                 return false;
                             });
 
+    // Create and start update thread
+    thread update_thread(game_update_thread, game_board, ref(x_frog),
+                         ref(y_frog), ref(lives), ref(state),
+                         ref(current_event), ref(screen), message);
+
     screen.Loop(main_renderer);
 
+    // Cleanup thread
+    state = QUIT;
+    update_thread.join();
+
     return 0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+////////////////////////////// THREAD FUNCTIONS ////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+
+void game_update_thread(struct board_tile board[SIZE][SIZE], int &x_frog, int &y_frog,
+                        int &lives, game_state &state, game_event &current_event,
+                        ScreenInteractive &screen, Element message[2])
+{
+    using namespace chrono;
+    milliseconds tick_duration = milliseconds(1000 / TPS);
+
+    while (state != QUIT)
+    {
+        time_point start_time = steady_clock::now();
+
+        if (state == GAME)
+        {
+            lock_guard<mutex> lock(game_mutex);
+
+            // Update game state
+            move_bugs(board);
+            current_event = check_state(board, x_frog, y_frog, lives, state);
+
+            // Update message based on event
+            switch (current_event)
+            {
+            case REACHED_LILLYPAD:
+                message[0] = text("You won!");
+                break;
+            case ON_WATER:
+                message[0] = text("You fell in the water!") | color(Color::Red);
+                break;
+            case HIT_BY_BUG:
+                message[0] = text("You were hit by a bug!") | color(Color::Orange1);
+                break;
+            case NO_LIVES:
+                message[0] = text("You ran out of lives!") | color(Color::Red);
+                break;
+            default:
+                break;
+            }
+        }
+
+        // Trigger screen refresh
+        if (state == GAME)
+            screen.PostEvent(Event::Custom);
+
+        // Sleep for remainder of tick
+        time_point end_time = steady_clock::now();
+        milliseconds elapsed = duration_cast<milliseconds>(end_time - start_time);
+        if (elapsed < tick_duration)
+        {
+            this_thread::sleep_for(tick_duration - elapsed);
+        }
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -274,7 +352,9 @@ Component create_board_canvas(struct board_tile game_board[SIZE][SIZE], int &x_f
                               game_event &current_event, Element message[2], int &current_tab)
 {
     Component board_canvas = Renderer([&, game_board]
-                                      { return print_board(game_board); });
+                                      { 
+                                          lock_guard<mutex> lock(game_mutex);
+                                          return print_board(game_board); });
     board_canvas |=
         CatchEvent(
             [&, game_board, message](Event event)
@@ -294,39 +374,9 @@ Component create_board_canvas(struct board_tile game_board[SIZE][SIZE], int &x_f
 
                 if (move_direction != STAY)
                 {
+                    lock_guard<mutex> lock(game_mutex);
                     move_frogger(game_board, x_frog, y_frog, move_direction);
-
-                    // (Phase 3.3): Implement the movement of the bugs.
-                    move_bugs(game_board);
-                    current_event = check_state(game_board, x_frog, y_frog, lives, state);
-
-                    switch (current_event)
-                    {
-                    case REACHED_LILLYPAD:
-                        message[0] = text("You won!");
-                        break;
-                    case ON_WATER:
-                        message[0] = text("You fell in the water!") | color(Color::Red);
-                        break;
-                    case HIT_BY_BUG:
-                        message[0] = text("You were hit by a bug!") | color(Color::Orange1);
-                        break;
-                    case NO_LIVES:
-                        message[0] = text("You ran out of lives!") | color(Color::Red);
-                        break;
-                    case MOVED:
-                        message[0] = text("You moved.");
-                        break;
-                    default:
-                        message[0] = text("");
-                        break;
-                    }
-
-                    if (state == WIN || state == LOSE)
-                    {
-                        message[0] = text(state == WIN ? "You won!" : "You lost!");
-                        // screen.ExitLoopClosure()();
-                    }
+                    message[0] = text("You moved.");
                     return true;
                 }
                 return false;

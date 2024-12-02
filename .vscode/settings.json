@@ -1,4 +1,8 @@
 {
     "cmake.sourceDirectory": "D:/Dev/frogger",
-    "cmake.useCMakePresets": "always"
+    "cmake.useCMakePresets": "always",
+    "files.associations": {
+        "chrono": "cpp",
+        "tuple": "cpp"
+    }
 }

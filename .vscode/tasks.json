@@ -4,7 +4,7 @@
 		{
 			"type": "cppbuild",
 			"label": "C/C++: g++.exe build active file",
-			"command": "C:\\Program Files\\msys2\\ucrt64\\bin\\g++.exe",
+			"command": "g++.exe",
 			"args": [
 				"-fdiagnostics-color=always",
 				"-g",
@@ -19,17 +19,17 @@
 				"$gcc"
 			],
 			"group": "build",
-			"detail": "compiler: C:\\Program Files\\msys2\\ucrt64\\bin\\g++.exe"
+			"detail": "compiler: g++.exe"
 		},
 		{
 			"type": "cppbuild",
 			"label": "FTXUI C/C++: g++.exe build active file",
-			"command": "C:\\Program Files\\msys2\\ucrt64\\bin\\g++.exe",
+			"command": "g++.exe",
 			"args": [
 				"-I",
-				"${workspaceFolder}\\FTXUI\\include",
+				"${workspaceFolder}\\build\\_deps\\ftxui-src\\include",
 				"-L",
-				"${workspaceFolder}\\build",
+				"${workspaceFolder}\\build\\_deps\\ftxui-build",
 				"-fdiagnostics-color=always",
 				"-g",
 				"${file}",
@@ -46,7 +46,7 @@
 				"$gcc"
 			],
 			"group": "build",
-			"detail": "compiler: C:\\Program Files\\msys2\\ucrt64\\bin\\g++.exe"
+			"detail": "compiler: g++.exe"
 		},
 		{
 			"type": "cmake",

@@ -5,6 +5,30 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "FTXUI CMake - Build and debug frogger",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}\\build\\Debug\\frogger.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": true,
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "text": "set charset UTF-8"
+                }
+            ],
+            "preLaunchTask": "CMake: build debug",
+            "miDebuggerPath": "gdb.exe",
+        },
+        {
             "name": "g++.exe - Build and debug active file",
             "type": "cppdbg",
             "request": "launch",
@@ -23,15 +47,15 @@
                 }
             ],
             "preLaunchTask": "C/C++: g++.exe build active file",
-            "miDebuggerPath": "C:\\Program Files\\msys2\\ucrt64\\bin\\gdb.exe",
+            "miDebuggerPath": "gdb.exe",
             "miDebuggerServerAddress": "localhost:1234",
-            "debugServerPath": "C:\\Program Files\\msys2\\ucrt64\\bin\\gdbserver.exe"
+            "debugServerPath": "gdbserver.exe"
         },
         {
             "name": "FTXUI g++.exe - Build and debug active file",
             "type": "cppdbg",
             "request": "launch",
-            "program": "${fileDirname}\\build\\Debug\\${fileBasenameNoExtension}.exe",
+            "program": "${fileDirname}\\${fileBasenameNoExtension}.exe",
             "args": [],
             "stopAtEntry": false,
             "cwd": "${fileDirname}",
@@ -48,9 +72,8 @@
                     "text": "set charset UTF-8"
                 }
             ],
-            //"preLaunchTask": "FTXUI C/C++: g++.exe build active file",
-            "preLaunchTask": "CMake: build debug",
-            "miDebuggerPath": "C:\\Program Files\\msys2\\ucrt64\\bin\\gdb.exe",
+            "preLaunchTask": "FTXUI C/C++: g++.exe build active file",
+            "miDebuggerPath": "gdb.exe",
         },
     ]
 }

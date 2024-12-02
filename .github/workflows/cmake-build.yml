@@ -33,6 +33,28 @@ jobs:
         echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT";
         echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT;
     
+    - name: Cache CMake dependency source code
+      uses: actions/cache@v2
+      env:
+        cache-name: cache-cmake-dependency-sources
+      with:
+        path: ${{github.workspace}}/build/_deps/*-src
+        key: ${{ env.cache-name }}-${{ hashFiles('**/CMakeLists.txt', 'cmake/**') }}
+        restore-keys: |
+          ${{ env.cache-name }}-
+
+    - name: Cache CMake dependency build objects
+      uses: actions/cache@v2
+      env:
+        cache-name: cache-cmake-dependency-builds
+      with:
+        path: |
+          ${{github.workspace}}/build/_deps/*-build
+          ${{github.workspace}}/build/_deps/*-subbuild
+        key: ${{ env.cache-name }}-${{ matrix.os }}-${{ matrix.cpp_compiler }}-${{ hashFiles('**/CMakeLists.txt', 'cmake/**') }}
+        restore-keys: |
+          ${{ env.cache-name }}-${{ matrix.os }}-${{ matrix.cpp_compiler }}-
+            
     - name: Configure CMake
       run: >
         cmake -B ${{ steps.strings.outputs.build-output-dir }}

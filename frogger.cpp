@@ -835,10 +835,9 @@ void add_bank(struct board_tile board[SIZE][SIZE], int x)
     if (x < 1 || x >= SIZE - 1)
         return;
 
-    
-    // Log will not be added if there is a turtle in the row.
+    // Bank will not be added if there is a turtle or log in the row.
     for (int i = 0; i < SIZE; i++)
-        if (board[x][i].type == TURTLE)
+        if (board[x][i].type == TURTLE || board[x][i].type == LOG)
             return;
     for (int i = 0; i < SIZE; i++)
         board[x][i].type = BANK;

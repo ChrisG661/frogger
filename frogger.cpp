@@ -57,7 +57,8 @@ using namespace ftxui;
 
 // Additional constants
 #define TILE board[row][col]
-#define TPS 20 // 20 ticks per second
+#define TPS 20            // 20 ticks per second
+#define MOVE_COOLDOWN 200 // 200 milliseconds delay
 
 // Provided Enums
 enum tile_type
@@ -110,6 +111,15 @@ enum game_event
 // Additional structs
 
 // Bug struct to represent a bug on the board.
+
+struct frog_data
+{
+    int x;
+    int y;
+    int lives;
+    chrono::steady_clock::time_point last_move_time;
+};
+
 struct bug
 {
     bool present;             // TRUE or FALSE based on if a bug is there.
@@ -136,17 +146,17 @@ struct board_tile
 ////////////////////////////////////////////////////////////////////////////////
 
 void init_board(struct board_tile board[SIZE][SIZE]);
-game_event check_state(struct board_tile board[SIZE][SIZE], int &, int &, int &, enum game_state &);
+game_event check_state(struct board_tile board[SIZE][SIZE], frog_data &, enum game_state &);
 
 mutex game_mutex;
-void game_update_thread(struct board_tile board[SIZE][SIZE], int &, int &,
-                        int &, game_state &, game_event &, ScreenInteractive &, Element[2]);
+void game_update_thread(struct board_tile board[SIZE][SIZE], frog_data &,
+                        game_state &, game_event &, ScreenInteractive &, Element[2]);
 
 void add_turtle(struct board_tile board[SIZE][SIZE], int, int);
 void add_log(struct board_tile board[SIZE][SIZE], int, int, int);
 void clear_row(struct board_tile board[SIZE][SIZE], int);
 void remove_log(struct board_tile board[SIZE][SIZE], int, int);
-void move_frogger(struct board_tile board[SIZE][SIZE], int &, int &, enum direction);
+void move_frogger(struct board_tile board[SIZE][SIZE], frog_data &, enum direction);
 void add_bug(struct board_tile board[SIZE][SIZE], int, int);
 void remove_bug(struct board_tile board[SIZE][SIZE], int, int);
 void move_bugs(struct board_tile board[SIZE][SIZE]);
@@ -157,9 +167,9 @@ Element print_board(struct board_tile board[SIZE][SIZE]);
 Pixel type_to_pixel(enum tile_type type);
 
 // FTXUI component functions
-Component create_board_canvas(struct board_tile game_board[SIZE][SIZE], int &x_frog,
-                              int &y_frog, int &lives, game_state &state, game_event &event,
-                              Element message[2], int &current_tab);
+Component create_board_canvas(struct board_tile game_board[SIZE][SIZE], frog_data &,
+                              game_state &state, game_event &event, Element message[2],
+                              int &current_tab);
 Component create_game_sidebar(int &lives);
 Component create_setup_sidebar(struct board_tile game_board[SIZE][SIZE], vector<Command> &commands,
                                int &setup_selected, int &setup_cursor, string &setup_command,
@@ -179,8 +189,7 @@ int main(void)
 
     game_state state = GAME;
     game_event current_event = NO_EVENT;
-    int x_frog = XSTART, y_frog = YSTART;
-    int lives = LIVES;
+    frog_data frog = {XSTART, YSTART, LIVES, chrono::steady_clock::now()};
     string key_pressed = " ";
     Element message[2] = {text(""), text("")};
     int setup_selected = 0, setup_cursor = 0;
@@ -189,7 +198,7 @@ int main(void)
 
     ScreenInteractive screen = ScreenInteractive::Fullscreen();
 
-    Component game_sidebar = create_game_sidebar(lives);
+    Component game_sidebar = create_game_sidebar(frog.lives);
 
     vector<Command> commands = {
         {'t', "Add Turtle", [](struct board_tile board[SIZE][SIZE], int x, int y, int)
@@ -220,7 +229,7 @@ int main(void)
         },
         &current_tab);
     Component board_canvas =
-        create_board_canvas(game_board, x_frog, y_frog, lives,
+        create_board_canvas(game_board, frog,
                             state, current_event, message, current_tab);
     Component game_container = create_game_container(board_canvas, sidebar);
     Component message_bar = create_message_bar(message);
@@ -273,8 +282,7 @@ int main(void)
                             });
 
     // Create and start update thread
-    thread update_thread(game_update_thread, game_board, ref(x_frog),
-                         ref(y_frog), ref(lives), ref(state),
+    thread update_thread(game_update_thread, game_board, ref(frog), ref(state),
                          ref(current_event), ref(screen), message);
 
     screen.Loop(main_renderer);
@@ -290,8 +298,8 @@ int main(void)
 ////////////////////////////// THREAD FUNCTIONS ////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-void game_update_thread(struct board_tile board[SIZE][SIZE], int &x_frog, int &y_frog,
-                        int &lives, game_state &state, game_event &current_event,
+void game_update_thread(struct board_tile board[SIZE][SIZE], frog_data &frog,
+                        game_state &state, game_event &current_event,
                         ScreenInteractive &screen, Element message[2])
 {
     using namespace chrono;
@@ -307,7 +315,7 @@ void game_update_thread(struct board_tile board[SIZE][SIZE], int &x_frog, int &y
 
             // Update game state
             move_bugs(board);
-            current_event = check_state(board, x_frog, y_frog, lives, state);
+            current_event = check_state(board, frog, state);
 
             // Update message based on event
             switch (current_event)
@@ -347,9 +355,9 @@ void game_update_thread(struct board_tile board[SIZE][SIZE], int &x_frog, int &y
 ///////////////////////////// ///FTXUI FUNCTIONS ///////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
-Component create_board_canvas(struct board_tile game_board[SIZE][SIZE], int &x_frog,
-                              int &y_frog, int &lives, game_state &state,
-                              game_event &current_event, Element message[2], int &current_tab)
+Component create_board_canvas(struct board_tile game_board[SIZE][SIZE], frog_data &frog,
+                              game_state &state, game_event &current_event,
+                              Element message[2], int &current_tab)
 {
     Component board_canvas = Renderer([&, game_board]
                                       { 
@@ -374,10 +382,7 @@ Component create_board_canvas(struct board_tile game_board[SIZE][SIZE], int &x_f
 
                 if (move_direction != STAY)
                 {
-                    lock_guard<mutex> lock(game_mutex);
-                    move_frogger(game_board, x_frog, y_frog, move_direction);
-                    message[0] = text("You moved.");
-                    return true;
+                    move_frogger(game_board, frog, move_direction);
                 }
                 return false;
             });
@@ -578,9 +583,9 @@ void init_board(struct board_tile board[SIZE][SIZE])
  * lives: The number of lives the player has.
  * state: The current state of the game.
  */
-game_event check_state(board_tile board[SIZE][SIZE], int &x_frog, int &y_frog, int &lives, game_state &state)
+game_event check_state(board_tile board[SIZE][SIZE], frog_data &frog, game_state &state)
 {
-    board_tile &current_tile = board[x_frog][y_frog];
+    board_tile &current_tile = board[frog.x][frog.y];
     if (current_tile.type == LILLYPAD)
     {
         state = WIN;
@@ -589,8 +594,8 @@ game_event check_state(board_tile board[SIZE][SIZE], int &x_frog, int &y_frog, i
     else if ((current_tile.type == WATER) ||
              (current_tile.bug.present))
     {
-        lives--;
-        if (lives <= 0)
+        frog.lives--;
+        if (frog.lives <= 0)
         {
             state = LOSE;
             return NO_LIVES;
@@ -603,9 +608,9 @@ game_event check_state(board_tile board[SIZE][SIZE], int &x_frog, int &y_frog, i
             if (current_tile.type == WATER)
                 current_event = ON_WATER;
             current_tile.occupied = FALSE;
-            x_frog = XSTART;
-            y_frog = YSTART;
-            board[x_frog][y_frog].occupied = TRUE;
+            frog.x = XSTART;
+            frog.y = YSTART;
+            board[frog.x][frog.y].occupied = TRUE;
             return current_event;
         }
     }
@@ -735,12 +740,21 @@ void remove_log(struct board_tile board[SIZE][SIZE], int x, int y)
  * y: The y-coordinate of the frogger.
  * move_direction: The direction the frogger will move.
  */
-void move_frogger(struct board_tile board[SIZE][SIZE], int &x, int &y, direction move_direction)
+void move_frogger(struct board_tile board[SIZE][SIZE], frog_data &frog, direction move_direction)
 {
     if (move_direction == STAY)
         return;
 
-    int new_x = x, new_y = y;
+    auto current_time = chrono::steady_clock::now();
+    auto elapsed = chrono::duration_cast<chrono::milliseconds>(
+        current_time - frog.last_move_time);
+    if (elapsed.count() < MOVE_COOLDOWN)
+        return;
+
+    lock_guard<mutex> lock(game_mutex);
+    frog.last_move_time = current_time;
+
+    int new_x = frog.x, new_y = frog.y;
     switch (move_direction)
     {
     case FORWARD:
@@ -763,10 +777,10 @@ void move_frogger(struct board_tile board[SIZE][SIZE], int &x, int &y, direction
     if (new_x < 0 || new_x >= SIZE || new_y < 0 || new_y >= SIZE)
         return;
 
-    board[x][y].occupied = FALSE;
+    board[frog.x][frog.y].occupied = FALSE;
     board[new_x][new_y].occupied = TRUE;
-    x = new_x;
-    y = new_y;
+    frog.x = new_x;
+    frog.y = new_y;
 }
 
 /*

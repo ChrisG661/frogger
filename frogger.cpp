@@ -148,6 +148,8 @@ struct board_tile
 ////////////////////////////////////////////////////////////////////////////////
 
 void init_board(struct board_tile board[SIZE][SIZE]);
+string load_file(string);
+void load_board(struct board_tile board[SIZE][SIZE], string);
 game_event check_state(struct board_tile board[SIZE][SIZE], frog_data &, enum game_state &);
 
 mutex game_mutex;
@@ -173,9 +175,9 @@ Component create_board_canvas(struct board_tile game_board[SIZE][SIZE], frog_dat
                               game_state &state, game_event &event, Element message[2],
                               int &current_tab);
 Component create_game_sidebar(int &lives);
-Component create_setup_sidebar(struct board_tile game_board[SIZE][SIZE], vector<Command> &commands,
-                               int &setup_selected, int &setup_cursor, string &setup_command,
-                               Element message[2], int &current_tab);
+Component create_setup_sidebar(struct board_tile game_board[SIZE][SIZE], game_state &state,
+                               vector<Command> &commands, int &setup_selected, int &setup_cursor,
+                               string &setup_command, Element message[2], int &current_tab);
 Component create_game_container(Component &board_canvas, Component &sidebar);
 Component create_message_bar(Element message[2]);
 Component create_keypress_box(string &key_pressed);
@@ -228,10 +230,11 @@ int main(void)
          { add_bank(board, x); }},
         {'o', "Initialize Board", [](struct board_tile board[SIZE][SIZE], int, int, int)
          { init_board(board); }},
+        {'O', "Load Board", [](struct board_tile board[SIZE][SIZE], int, int, int) { /* No action. */ }},
         {'q', "Quit Setup", [](struct board_tile[SIZE][SIZE], int, int, int) { /* No action. */ }}};
 
     Component setup_sidebar =
-        create_setup_sidebar(game_board, commands, setup_selected,
+        create_setup_sidebar(game_board, state, commands, setup_selected,
                              setup_cursor, setup_command, message, current_tab);
     Component sidebar = Container::Tab(
         {
@@ -281,13 +284,10 @@ int main(void)
                                     return true;
                                 }
 
-                                if (event == Event::Character('o'))
+                                if (current_tab == 0 && event == Event::Character('o'))
                                 {
-                                    current_tab = 1 - current_tab;
-                                    if (current_tab == 1)
-                                        state = SETUP;
-                                    else
-                                        state = GAME;
+                                    current_tab = 1;
+                                    state = SETUP;
                                     return true;
                                 }
                                 return false;
@@ -431,9 +431,9 @@ Component create_game_sidebar(int &lives)
     return game_sidebar;
 }
 
-Component create_setup_sidebar(struct board_tile game_board[SIZE][SIZE], vector<Command> &commands,
-                               int &setup_selected, int &setup_cursor, string &setup_command,
-                               Element message[2], int &current_tab)
+Component create_setup_sidebar(struct board_tile game_board[SIZE][SIZE], game_state &state,
+                               vector<Command> &commands, int &setup_selected, int &setup_cursor,
+                               string &setup_command, Element message[2], int &current_tab)
 {
     InputOption setup_input_option = InputOption::Default();
     setup_input_option.cursor_position = &setup_cursor;
@@ -469,6 +469,7 @@ Component create_setup_sidebar(struct board_tile game_board[SIZE][SIZE], vector<
                     command_args[i] = command_args[i] * 10 + (setup_command[j] - '0');
                 }
 
+                bool valid_command = FALSE;
                 auto it = find_if(commands.begin(), commands.end(), [&](const Command &cmd)
                                   { return cmd.setup_char == command; });
                 if (it != commands.end())
@@ -476,17 +477,35 @@ Component create_setup_sidebar(struct board_tile game_board[SIZE][SIZE], vector<
                     if (command == 'q')
                     {
                         current_tab = 0;
+                        state = GAME;
                         setup_command = "";
                         return true;
                     }
                     it->command_function(game_board, command_args[0], command_args[1], command_args[2]);
+                    valid_command = TRUE;
                 }
-                else
+
+                if (command == 'O')
                 {
-                    message[0] = text("Invalid command.") | color(Color::Red);
+                    string filename = setup_command.substr(2);
+                    if (filename == "") // Default filename
+                        filename = "game_board.frogger";
+                    string boardfile = load_file(filename);
+                    if (boardfile == "")
+                    {
+                        message[0] = text("File not found.") | color(Color::Red);
+                        setup_command = "";
+                        setup_menu->TakeFocus();
+                        return true;
+                    }
+                    load_board(game_board, boardfile);
                 }
+
                 // TODO: Add error message if command did not execute.
-                message[0] = text("Command executed.") | color(Color::Green);
+                if (!valid_command)
+                    message[0] = text("Invalid command.") | color(Color::Red);
+                else
+                    message[0] = text("Command executed.") | color(Color::Green);
                 setup_command = "";
                 setup_menu->TakeFocus();
                 return true;
@@ -596,6 +615,91 @@ void init_board(struct board_tile board[SIZE][SIZE])
                 board[row][col].type = WATER;
         }
     }
+}
+
+/*
+ * Function: load_board
+ * ---------------------
+ * Loads the board from a string.
+ * The board is represented by the 2D array and the string.
+ *
+ * board: The 2D array representing the board.
+ * board_string: The string representing the board.
+ */
+void load_board(struct board_tile board[SIZE][SIZE], string board_string)
+{
+    int row = 0, col = 0;
+    init_board(board);
+    for (int i = 0; i < board_string.size(); i++)
+    {
+        if (board_string[i] == '\n' || col >= SIZE)
+        {
+            row++;
+            col = 0;
+        }
+        else if (row >= SIZE)
+        {
+            break;
+        }
+        else
+        {
+            switch (board_string[i])
+            {
+            case '~':
+                board[row][col].type = WATER;
+                break;
+            case 'L':
+                board[row][col].type = LOG;
+                break;
+            case 'x':
+                board[row][col].type = BANK;
+                break;
+            case 'T':
+                board[row][col].type = TURTLE;
+                break;
+            case 'o':
+                board[row][col].type = LILLYPAD;
+                break;
+            case 'F':
+                board[row][col].type = BANK;
+                board[row][col].occupied = TRUE;
+                break;
+            case 'B': // bug on log
+                board[row][col].type = LOG;
+                add_bug(board, row, col);
+                break;
+            case 'b': // bug on turtle
+                board[row][col].type = TURTLE;
+                add_bug(board, row, col);
+                break;
+            default:
+                break;
+            }
+            col++;
+        }
+    }
+}
+
+/*
+ * Function: load_file
+ * ---------------------
+ * Loads the contents of a file into a string.
+ *
+ * filename: The name of the file to be loaded.
+ */
+string load_file(string filename)
+{
+    string str;
+    ifstream file(filename);
+    if (!file.is_open())
+    {
+        return "";
+    }
+    string line;
+    while (getline(file, line))
+        str += line + '\n';
+    file.close();
+    return str;
 }
 
 /*

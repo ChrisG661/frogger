@@ -184,6 +184,7 @@ Component create_keypress_box(string &key_pressed);
 
 int main(void)
 {
+    // Initialize game variables
     struct board_tile game_board[SIZE][SIZE];
     init_board(game_board);
 
@@ -196,6 +197,7 @@ int main(void)
     string setup_command = "";
     int current_tab = 0;
 
+    // Initialize FTXUI components
     ScreenInteractive screen = ScreenInteractive::Fullscreen();
 
     Component game_sidebar = create_game_sidebar(frog.lives);
@@ -250,6 +252,7 @@ int main(void)
                                 message_bar->Render() | xflex_grow}),
                        }); });
 
+    // Initialize main renderer with event handling
     Component main_renderer =
         game_renderer | CatchEvent(
                             [&](Event event)
@@ -298,6 +301,21 @@ int main(void)
 ////////////////////////////// THREAD FUNCTIONS ////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
+/*
+ * Function: game_update_thread
+ * ---------------------
+ * Updates the game state and checks for game events.
+ * Updates the message based on the game event.
+ * Triggers screen refresh if the game state is GAME.
+ * Sleeps for the remainder of the tick duration.
+ *
+ * board: The 2D array representing the board.
+ * frog: The frogger data struct.
+ * state: The current state of the game.
+ * current_event: The current event of the game.
+ * screen: The interactive screen.
+ * message: The message to be displayed.
+ */
 void game_update_thread(struct board_tile board[SIZE][SIZE], frog_data &frog,
                         game_state &state, game_event &current_event,
                         ScreenInteractive &screen, Element message[2])

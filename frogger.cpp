@@ -632,15 +632,18 @@ void load_board(struct board_tile board[SIZE][SIZE], string board_string)
     init_board(board);
     for (int i = 0; i < board_string.size(); i++)
     {
-        if (board_string[i] == '\n' || col >= SIZE)
+        if (col >= SIZE)
         {
-            row++;
-            col = 0;
+            if (board_string[i] == '\n')
+            {
+                row++;
+                col = 0;
+            }
+            else
+                continue;
         }
-        else if (row >= SIZE)
-        {
+        if (row >= SIZE)
             break;
-        }
         else
         {
             switch (board_string[i])

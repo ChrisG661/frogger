@@ -149,7 +149,7 @@ struct board_tile
 
 void init_board(struct board_tile board[SIZE][SIZE]);
 string load_file(string);
-void load_board(struct board_tile board[SIZE][SIZE], string);
+void load_board(struct board_tile board[SIZE][SIZE], frog_data &, string);
 game_event check_state(struct board_tile board[SIZE][SIZE], frog_data &, enum game_state &);
 
 mutex game_mutex;
@@ -175,9 +175,10 @@ Component create_board_canvas(struct board_tile game_board[SIZE][SIZE], frog_dat
                               game_state &state, game_event &event, Element message[2],
                               int &current_tab);
 Component create_game_sidebar(int &lives);
-Component create_setup_sidebar(struct board_tile game_board[SIZE][SIZE], game_state &state,
-                               vector<Command> &commands, int &setup_selected, int &setup_cursor,
-                               string &setup_command, Element message[2], int &current_tab);
+Component create_setup_sidebar(struct board_tile game_board[SIZE][SIZE], frog_data &frog,
+                               game_state &state, vector<Command> &commands, int &setup_selected,
+                               int &setup_cursor, string &setup_command, Element message[2],
+                               int &current_tab);
 Component create_game_container(Component &board_canvas, Component &sidebar);
 Component create_message_bar(Element message[2]);
 Component create_keypress_box(string &key_pressed);
@@ -234,7 +235,7 @@ int main(void)
         {'q', "Quit Setup", [](struct board_tile[SIZE][SIZE], int, int, int) { /* No action. */ }}};
 
     Component setup_sidebar =
-        create_setup_sidebar(game_board, state, commands, setup_selected,
+        create_setup_sidebar(game_board, frog, state, commands, setup_selected,
                              setup_cursor, setup_command, message, current_tab);
     Component sidebar = Container::Tab(
         {
@@ -431,7 +432,7 @@ Component create_game_sidebar(int &lives)
     return game_sidebar;
 }
 
-Component create_setup_sidebar(struct board_tile game_board[SIZE][SIZE], game_state &state,
+Component create_setup_sidebar(struct board_tile game_board[SIZE][SIZE], frog_data &frog, game_state &state,
                                vector<Command> &commands, int &setup_selected, int &setup_cursor,
                                string &setup_command, Element message[2], int &current_tab)
 {
@@ -498,7 +499,7 @@ Component create_setup_sidebar(struct board_tile game_board[SIZE][SIZE], game_st
                         setup_menu->TakeFocus();
                         return true;
                     }
-                    load_board(game_board, boardfile);
+                    load_board(game_board, frog, boardfile);
                 }
 
                 // TODO: Add error message if command did not execute.
@@ -587,6 +588,7 @@ Component create_keypress_box(string &key_pressed)
  */
 void init_board(struct board_tile board[SIZE][SIZE])
 {
+    bugs_positions.clear();
     for (int row = 0; row < SIZE; row++)
     {
         for (int col = 0; col < SIZE; col++)
@@ -626,7 +628,7 @@ void init_board(struct board_tile board[SIZE][SIZE])
  * board: The 2D array representing the board.
  * board_string: The string representing the board.
  */
-void load_board(struct board_tile board[SIZE][SIZE], string board_string)
+void load_board(struct board_tile board[SIZE][SIZE], frog_data &frog, string board_string)
 {
     int row = 0, col = 0;
     init_board(board);
@@ -646,6 +648,7 @@ void load_board(struct board_tile board[SIZE][SIZE], string board_string)
             break;
         else
         {
+            board[row][col].occupied = FALSE;
             switch (board_string[i])
             {
             case '~':
@@ -666,6 +669,8 @@ void load_board(struct board_tile board[SIZE][SIZE], string board_string)
             case 'F':
                 board[row][col].type = BANK;
                 board[row][col].occupied = TRUE;
+                frog.x = row;
+                frog.y = col;
                 break;
             case 'B': // bug on log
                 board[row][col].type = LOG;

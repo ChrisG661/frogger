@@ -58,11 +58,12 @@ using namespace ftxui;
 
 // Additional constants
 #define TILE board[row][col]
-#define TPS 20            // 20 ticks per second
-#define MOVE_COOLDOWN 200 // 200 milliseconds delay
-#define BUGS_MOVE_TICKS 3 // 3 ticks per bug movement
-#define LOG_MOVE_TICKS 12 // Move every 10 game ticks
-#define LOG_SPEED 1       // Move 1 cell at a time
+#define TPS 20             // 20 ticks per second
+#define MOVE_COOLDOWN 200  // 200 milliseconds delay
+#define BUGS_MOVE_TICKS 3  // 3 ticks per bug movement
+#define LOG_MOVE_TICKS 12  // Move every 10 game ticks
+#define LOG_SPEED 1        // Move 1 cell at a time
+#define LOG_TRAP_TICKS 120 // 120 ticks for trap log
 
 // Provided Enums
 enum tile_type
@@ -71,7 +72,8 @@ enum tile_type
     BANK,
     WATER,
     TURTLE,
-    LOG
+    LOG,
+    TRAP_LOG
 };
 
 // Additional Enums
@@ -145,6 +147,8 @@ struct log_data
     int length;              // The length of the log.
     log_direction direction; // The direction the log is moving.
     int move_counter;        // The counter to track log movement.
+    int trap;                // The log is a trap.
+    int trap_counter;        // The counter to track trap timer.
 };
 
 struct Command
@@ -176,7 +180,7 @@ void game_update_thread(struct board_tile board[SIZE][SIZE], frog_data &,
                         game_state &, game_event &, ScreenInteractive &, Element[2]);
 
 void add_turtle(struct board_tile board[SIZE][SIZE], int, int);
-void add_log(struct board_tile board[SIZE][SIZE], int, int, int);
+void add_log(struct board_tile board[SIZE][SIZE], int, int, int, bool);
 void clear_row(struct board_tile board[SIZE][SIZE], int);
 void remove_log(struct board_tile board[SIZE][SIZE], int, int);
 void move_frogger(struct board_tile board[SIZE][SIZE], frog_data &, enum direction);
@@ -184,7 +188,7 @@ void add_bug(struct board_tile board[SIZE][SIZE], int, int);
 void remove_bug(struct board_tile board[SIZE][SIZE], int, int);
 void move_bugs(struct board_tile board[SIZE][SIZE]);
 void add_bank(struct board_tile board[SIZE][SIZE], int);
-void move_logs(struct board_tile board[SIZE][SIZE], frog_data &);
+void update_logs(struct board_tile board[SIZE][SIZE], frog_data &);
 
 // Prints out the current state of the board.
 Element print_board(struct board_tile board[SIZE][SIZE]);
@@ -240,7 +244,9 @@ int main(void)
         {'t', "Add Turtle", [](struct board_tile board[SIZE][SIZE], int x, int y, int)
          { add_turtle(board, x, y); }},
         {'l', "Add Log", [](struct board_tile board[SIZE][SIZE], int x, int y_start, int y_end)
-         { add_log(board, x, y_start, y_end); }},
+         { add_log(board, x, y_start, y_end, FALSE); }},
+        {'L', "Add Trap Log", [](struct board_tile board[SIZE][SIZE], int x, int y_start, int y_end)
+         { add_log(board, x, y_start, y_end, TRUE); }},
         {'c', "Clear Row", [](struct board_tile board[SIZE][SIZE], int x, int, int)
          { clear_row(board, x); }},
         {'r', "Remove Log", [](struct board_tile board[SIZE][SIZE], int x, int y, int)
@@ -364,7 +370,7 @@ void game_update_thread(struct board_tile board[SIZE][SIZE], frog_data &frog,
             lock_guard<mutex> lock(game_mutex);
 
             // Update game state
-            move_logs(board, frog);
+            update_logs(board, frog);
             move_bugs(board);
             current_event = check_state(board, frog, state);
 
@@ -812,10 +818,12 @@ void add_turtle(struct board_tile board[SIZE][SIZE], int x, int y)
  * y_start: The starting y-coordinate of the log.
  * y_end: The ending y-coordinate of the log.
  */
-void add_log(struct board_tile board[SIZE][SIZE], int x, int y_start, int length)
+void add_log(struct board_tile board[SIZE][SIZE], int x, int y_start, int length, bool is_trap)
 {
     if (x < 1 || x >= SIZE - 1)
         return;
+
+    tile_type log_type = is_trap ? TRAP_LOG : LOG;
 
     // Log will not be added if there is a turtle in the row.
     for (int i = 0; i < SIZE; i++)
@@ -841,7 +849,7 @@ void add_log(struct board_tile board[SIZE][SIZE], int x, int y_start, int length
                 for (int i = new_start_col; i < new_end_col && i < SIZE; i++)
                 {
                     if (i >= 0 && i < SIZE)
-                        board[x][i].type = LOG;
+                        board[x][i].type = log_type;
                 }
 
                 return;
@@ -855,7 +863,9 @@ void add_log(struct board_tile board[SIZE][SIZE], int x, int y_start, int length
         .start_col = y_start,
         .length = length,
         .direction = (x % 2 == 0) ? LOG_RIGHT : LOG_LEFT, // Alternate directions
-        .move_counter = game_tick % LOG_MOVE_TICKS        // Sync log movement
+        .move_counter = game_tick % LOG_MOVE_TICKS,       // Sync log movement
+        .trap = is_trap,                                  // Set trap log
+        .trap_counter = LOG_TRAP_TICKS                    // Set trap timer
     };
     logs.push_back(new_log);
 
@@ -863,7 +873,7 @@ void add_log(struct board_tile board[SIZE][SIZE], int x, int y_start, int length
     for (int i = y_start; i < y_start + length && i < SIZE; i++)
     {
         if (i >= 0 && i < SIZE)
-            board[x][i].type = LOG;
+            board[x][i].type = log_type;
     }
 }
 
@@ -1139,7 +1149,7 @@ void add_bank(struct board_tile board[SIZE][SIZE], int x)
 }
 
 /*
- * Function: move_logs
+ * Function: update_logs
  * ---------------------
  * Moves the position of the logs on the board.
  * Also moves the frog and bugs on the log.
@@ -1148,16 +1158,17 @@ void add_bank(struct board_tile board[SIZE][SIZE], int x)
  * frog: The frogger data struct.
  */
 
-void move_logs(struct board_tile board[SIZE][SIZE], frog_data &frog)
+void update_logs(struct board_tile board[SIZE][SIZE], frog_data &frog)
 {
     vector<log_data>::iterator it = logs.begin();
-    while (it != logs.end())
+    while (it != logs.end() && !logs.empty())
     {
-        if (++it->move_counter >= LOG_MOVE_TICKS)
+        if (++(it->move_counter) >= LOG_MOVE_TICKS)
         {
             it->move_counter = 0;
 
             vector<board_tile> log_tiles;
+            tile_type log_type = it->trap ? TRAP_LOG : LOG;
 
             // Determine direction of log movement
             int move_dir = (it->direction == LOG_RIGHT) ? LOG_SPEED : -LOG_SPEED;
@@ -1172,7 +1183,7 @@ void move_logs(struct board_tile board[SIZE][SIZE], frog_data &frog)
                         if (i == SIZE - 1 && it->direction == LOG_RIGHT &&
                             log_tiles.size() > 0 &&
                             !log_tiles[log_tiles.size() - 1].bug.present &&
-                            log_tiles[log_tiles.size() - 1].type == LOG)
+                            log_tiles[log_tiles.size() - 1].type == log_type)
                         {
                             log_tiles[log_tiles.size() - 1].bug =
                                 {.present = TRUE,
@@ -1181,7 +1192,7 @@ void move_logs(struct board_tile board[SIZE][SIZE], frog_data &frog)
                         }
                         else if (i == 0 && it->direction == LOG_LEFT &&
                                  !board[it->row][i - move_dir].bug.present &&
-                                 board[it->row][i - move_dir].type == LOG)
+                                 board[it->row][i - move_dir].type == log_type)
                         {
                             board[it->row][i - move_dir].bug =
                                 {.present = TRUE,
@@ -1219,7 +1230,7 @@ void move_logs(struct board_tile board[SIZE][SIZE], frog_data &frog)
                 if (!log_tiles.empty())
                     log_tiles.erase(log_tiles.begin());
                 else
-                    board[it->row][i].type = LOG;
+                    board[it->row][i].type = log_type;
             }
 
             // Determine if frogger is on the log, then move frogger
@@ -1233,6 +1244,23 @@ void move_logs(struct board_tile board[SIZE][SIZE], frog_data &frog)
                         frog.y -= move_dir;
                         board[frog.x][frog.y].occupied = TRUE;
                     }
+                }
+            }
+        }
+        if (it != logs.end() && it->trap)
+        {
+            if (--(it->trap_counter) <= 0)
+            {
+                {
+                    for (int i = it->start_col; i < it->start_col + it->length && i < SIZE; i++)
+                    {
+                        if (i >= 0 && i < SIZE)
+                        {
+                            board[it->row][i].type = WATER;
+                            remove_bug(board, it->row, i);
+                        }
+                    }
+                    it = logs.erase(it);
                 }
             }
         }
@@ -1323,6 +1351,11 @@ Pixel type_to_pixel(enum tile_type type)
         p.foreground_color = Color::DarkOrange;
         p.background_color = Color::Orange3;
         p.character = "LL";
+        break;
+    case TRAP_LOG:
+        p.foreground_color = Color::DarkOrange;
+        p.background_color = Color::DarkOrange3;
+        p.character = "JJ";
         break;
     default:
         p.foreground_color = Color::White;

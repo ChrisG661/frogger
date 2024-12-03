@@ -60,7 +60,9 @@ using namespace ftxui;
 #define TILE board[row][col]
 #define TPS 20            // 20 ticks per second
 #define MOVE_COOLDOWN 200 // 200 milliseconds delay
-#define BUGS_MOVE_TICKS 5 // 5 ticks per bug movement
+#define BUGS_MOVE_TICKS 3 // 3 ticks per bug movement
+#define LOG_MOVE_TICKS 12 // Move every 10 game ticks
+#define LOG_SPEED 1       // Move 1 cell at a time
 
 // Provided Enums
 enum tile_type
@@ -106,14 +108,20 @@ enum game_event
     NO_LIVES
 };
 
+// Log direction enum for the log movement.
+enum log_direction
+{
+    LOG_LEFT,
+    LOG_RIGHT
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////  STRUCTS  //////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
 // Additional structs
 
-// Bug struct to represent a bug on the board.
-
+// Frog data struct to represent the frog on the board.
 struct frog_data
 {
     int x;
@@ -122,10 +130,21 @@ struct frog_data
     chrono::steady_clock::time_point last_move_time;
 };
 
+// Bug struct to represent a bug on the board.
 struct bug
 {
     bool present;             // TRUE or FALSE based on if a bug is there.
     enum direction direction; // The direction the bug is moving.
+};
+
+// Log data struct to represent a log on the board.
+struct log_data
+{
+    int row;                 // The row the log is on.
+    int start_col;           // The starting column of the log.
+    int length;              // The length of the log.
+    log_direction direction; // The direction the log is moving.
+    int move_counter;        // The counter to track log movement.
 };
 
 struct Command
@@ -165,6 +184,7 @@ void add_bug(struct board_tile board[SIZE][SIZE], int, int);
 void remove_bug(struct board_tile board[SIZE][SIZE], int, int);
 void move_bugs(struct board_tile board[SIZE][SIZE]);
 void add_bank(struct board_tile board[SIZE][SIZE], int);
+void move_logs(struct board_tile board[SIZE][SIZE], frog_data &);
 
 // Prints out the current state of the board.
 Element print_board(struct board_tile board[SIZE][SIZE]);
@@ -187,8 +207,10 @@ Component create_keypress_box(string &key_pressed);
 //////////////////////////////  GLOBAL VARIABLES  //////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
+int game_tick = 0;                     // Counter to track game ticks
 vector<pair<int, int>> bugs_positions; // Vector to store bug positions
 int bugs_move_counter = 0;             // Counter to track bug movement
+vector<log_data> logs;                 // Vector to store log data
 
 ////////////////////////////////////////////////////////////////////////////////
 //////////////////////////  FUNCTION IMPLEMENTATIONS  //////////////////////////
@@ -342,6 +364,7 @@ void game_update_thread(struct board_tile board[SIZE][SIZE], frog_data &frog,
             lock_guard<mutex> lock(game_mutex);
 
             // Update game state
+            move_logs(board, frog);
             move_bugs(board);
             current_event = check_state(board, frog, state);
 
@@ -363,6 +386,10 @@ void game_update_thread(struct board_tile board[SIZE][SIZE], frog_data &frog,
             default:
                 break;
             }
+
+            game_tick++;
+            if (game_tick == INT_MAX)
+                game_tick = 0;
         }
 
         // Trigger screen refresh
@@ -589,6 +616,7 @@ Component create_keypress_box(string &key_pressed)
 void init_board(struct board_tile board[SIZE][SIZE])
 {
     bugs_positions.clear();
+    logs.clear();
     for (int row = 0; row < SIZE; row++)
     {
         for (int col = 0; col < SIZE; col++)
@@ -784,7 +812,7 @@ void add_turtle(struct board_tile board[SIZE][SIZE], int x, int y)
  * y_start: The starting y-coordinate of the log.
  * y_end: The ending y-coordinate of the log.
  */
-void add_log(struct board_tile board[SIZE][SIZE], int x, int y_start, int y_end)
+void add_log(struct board_tile board[SIZE][SIZE], int x, int y_start, int length)
 {
     if (x < 1 || x >= SIZE - 1)
         return;
@@ -794,13 +822,49 @@ void add_log(struct board_tile board[SIZE][SIZE], int x, int y_start, int y_end)
         if (board[x][i].type == TURTLE)
             return;
 
-    // If y_start or y_end is out of bounds, it will be set to the edge of the board.
-    if (y_start < 0)
-        y_start = 0;
-    if (y_end > SIZE - 1)
-        y_end = SIZE - 1;
-    for (int i = y_start; i <= y_end; i++)
-        board[x][i].type = LOG;
+    // Check if another log is already present in the row, extend if it overlaps
+    for (auto it = logs.begin(); it != logs.end(); ++it)
+    {
+        if (it->row == x)
+        {
+            if ((y_start >= it->start_col && y_start <= it->start_col + it->length) ||                   // New log start is within existing log
+                (y_start + length >= it->start_col && y_start + length <= it->start_col + it->length) || // New log end is within existing log
+                (y_start <= it->start_col && y_start + length >= it->start_col + it->length)             // New log overlaps existing log
+            )
+            {
+                int new_start_col = min(it->start_col, y_start);
+                int new_end_col = max(it->start_col + it->length, y_start + length);
+                it->start_col = new_start_col;
+                it->length = new_end_col - new_start_col;
+
+                // Add log to board
+                for (int i = new_start_col; i < new_end_col && i < SIZE; i++)
+                {
+                    if (i >= 0 && i < SIZE)
+                        board[x][i].type = LOG;
+                }
+
+                return;
+            }
+        }
+    }
+
+    // Add log to vector
+    log_data new_log = {
+        .row = x,
+        .start_col = y_start,
+        .length = length,
+        .direction = (x % 2 == 0) ? LOG_RIGHT : LOG_LEFT, // Alternate directions
+        .move_counter = game_tick % LOG_MOVE_TICKS        // Sync log movement
+    };
+    logs.push_back(new_log);
+
+    // Add log to board
+    for (int i = y_start; i < y_start + length && i < SIZE; i++)
+    {
+        if (i >= 0 && i < SIZE)
+            board[x][i].type = LOG;
+    }
 }
 
 /*
@@ -855,17 +919,27 @@ void remove_log(struct board_tile board[SIZE][SIZE], int x, int y)
 
     // Removes connected logs in the row.
     int i = y + 1, j = y - 1;
-    while (board[x][i].type == LOG)
+    while (i < SIZE && board[x][i].type == LOG)
     {
         board[x][i].type = WATER;
         remove_bug(board, x, i);
         i++;
     }
-    while (board[x][j].type == LOG)
+    while (j >= 0 && board[x][j].type == LOG)
     {
         board[x][j].type = WATER;
         remove_bug(board, x, j);
         j--;
+    }
+
+    // Remove log from logs vector
+    auto it = logs.begin();
+    while (it != logs.end())
+    {
+        if (it->row == x && y >= it->start_col && y < it->start_col + it->length)
+            it = logs.erase(it);
+        else
+            ++it;
     }
 }
 
@@ -1062,6 +1136,108 @@ void add_bank(struct board_tile board[SIZE][SIZE], int x)
             return;
     for (int i = 0; i < SIZE; i++)
         board[x][i].type = BANK;
+}
+
+/*
+ * Function: move_logs
+ * ---------------------
+ * Moves the position of the logs on the board.
+ * Also moves the frog and bugs on the log.
+ *
+ * board: The 2D array representing the board.
+ * frog: The frogger data struct.
+ */
+
+void move_logs(struct board_tile board[SIZE][SIZE], frog_data &frog)
+{
+    vector<log_data>::iterator it = logs.begin();
+    while (it != logs.end())
+    {
+        if (++it->move_counter >= LOG_MOVE_TICKS)
+        {
+            it->move_counter = 0;
+
+            vector<board_tile> log_tiles;
+
+            // Determine direction of log movement
+            int move_dir = (it->direction == LOG_RIGHT) ? LOG_SPEED : -LOG_SPEED;
+
+            // Move log tiles to queue and clear log tiles
+            for (int i = it->start_col; i < it->start_col + it->length && i < SIZE; i++)
+            {
+                if (i >= 0 && i < SIZE)
+                {
+                    // Handle bugs on the edge of the log
+                    if (board[it->row][i].bug.present)
+                        if (i == SIZE - 1 && it->direction == LOG_RIGHT &&
+                            log_tiles.size() > 0 &&
+                            !log_tiles[log_tiles.size() - 1].bug.present &&
+                            log_tiles[log_tiles.size() - 1].type == LOG)
+                        {
+                            log_tiles[log_tiles.size() - 1].bug =
+                                {.present = TRUE,
+                                 .direction = it->direction == LOG_RIGHT ? RIGHT : LEFT};
+                            remove_bug(board, it->row, i);
+                        }
+                        else if (i == 0 && it->direction == LOG_LEFT &&
+                                 !board[it->row][i - move_dir].bug.present &&
+                                 board[it->row][i - move_dir].type == LOG)
+                        {
+                            board[it->row][i - move_dir].bug =
+                                {.present = TRUE,
+                                 .direction = it->direction == LOG_RIGHT ? RIGHT : LEFT};
+                            remove_bug(board, it->row, i);
+                        }
+                    log_tiles.push_back(board[it->row][i]);
+                    if (board[it->row][i].bug.present)
+                        remove_bug(board, it->row, i);
+                    board[it->row][i] =
+                        {.type = WATER, .occupied = FALSE, .bug = {.present = FALSE, .direction = RIGHT}};
+                }
+            }
+
+            // Erase if log is completely out of bounds
+            it->start_col += move_dir;
+            if (it->start_col + it->length < 0 || it->start_col >= SIZE)
+            {
+                it = logs.erase(it);
+                continue;
+            }
+
+            // Add log tiles back to board
+            int new_col = it->start_col;
+            if (new_col < 0)
+                new_col = move_dir;
+            for (int i = new_col; i < it->start_col + it->length && i < SIZE; i++)
+            {
+                if (i >= 0 && !log_tiles.empty())
+                {
+                    board[it->row][i] = log_tiles.front();
+                    if (board[it->row][i].bug.present)
+                        bugs_positions.push_back({it->row, i});
+                }
+                if (!log_tiles.empty())
+                    log_tiles.erase(log_tiles.begin());
+                else
+                    board[it->row][i].type = LOG;
+            }
+
+            // Determine if frogger is on the log, then move frogger
+            if (frog.x == it->row)
+            {
+                if (frog.y >= it->start_col && frog.y < it->start_col + it->length)
+                {
+                    frog.y += move_dir;
+                    if (frog.y < 0 || frog.y >= SIZE)
+                    {
+                        frog.y -= move_dir;
+                        board[frog.x][frog.y].occupied = TRUE;
+                    }
+                }
+            }
+        }
+        ++it;
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -1274,7 +1274,7 @@ void update_logs(struct board_tile board[SIZE][SIZE], frog_data &frog)
                 }
             }
         }
-        if (it != logs.end() && it->trap)
+        if (!logs.empty() && it->trap)
         {
             if (--(it->trap_decay) <= 0)
             {

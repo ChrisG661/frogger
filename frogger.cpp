@@ -1380,13 +1380,13 @@ Pixel type_to_pixel(enum tile_type type)
     case BANK:
         p.foreground_color = Color::Yellow;
         p.background_color = Color::Yellow;
-        p.character = "XX";
+        p.character = "▪▪";
         break;
     case WATER:
         p.foreground_color = Color::Blue;
         p.background_color = Color::DarkBlue;
         p.bold = FALSE;
-        p.character = "\u259A\u259A";
+        p.character = "▚▚";
         break;
     case TURTLE:
         p.foreground_color = Color::Green;
@@ -1396,12 +1396,12 @@ Pixel type_to_pixel(enum tile_type type)
     case LOG:
         p.foreground_color = Color::DarkOrange;
         p.background_color = Color::Orange3;
-        p.character = "LL";
+        p.character = "▣▣";
         break;
     case TRAP_LOG:
         p.foreground_color = Color::DarkOrange;
         p.background_color = Color::DarkOrange3;
-        p.character = "JJ";
+        p.character = "▢▢";
         break;
     default:
         p.foreground_color = Color::White;

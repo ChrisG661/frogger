@@ -148,7 +148,15 @@ struct log_data
     log_direction direction; // The direction the log is moving.
     int move_counter;        // The counter to track log movement.
     int trap;                // The log is a trap.
-    int trap_counter;        // The counter to track trap timer.
+    int trap_decay;          // The decay counter for the trap log.
+};
+
+// Log tile data struct to store additioinal log tile properties on the board.
+struct log_tile_data
+{
+    log_direction direction; // The direction the log is moving.
+    int trap;                // The log is a trap.
+    int trap_decay;          // The decay counter for the trap log.
 };
 
 struct Command
@@ -161,9 +169,10 @@ struct Command
 // Provided structs
 struct board_tile
 {
-    enum tile_type type; // The type of piece it is (water, bank, etc.)
-    int occupied;        // TRUE or FALSE based on if Frogger is there.
-    struct bug bug;      // The bug that is on the tile.
+    enum tile_type type;      // The type of piece it is (water, bank, etc.)
+    int occupied;             // TRUE or FALSE based on if Frogger is there.
+    struct bug bug;           // The bug that is on the tile.
+    struct log_tile_data log; // The log data on the tile.
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -690,6 +699,8 @@ void load_board(struct board_tile board[SIZE][SIZE], frog_data &frog, string boa
                 break;
             case 'L':
                 board[row][col].type = LOG;
+                board[row][col].log.trap = FALSE;
+                board[row][col].log.direction = LOG_LEFT;
                 break;
             case 'x':
                 board[row][col].type = BANK;
@@ -830,6 +841,12 @@ void add_log(struct board_tile board[SIZE][SIZE], int x, int y_start, int length
         if (board[x][i].type == TURTLE)
             return;
 
+    log_tile_data log_tile = {
+        .direction = (x % 2 == 0) ? LOG_RIGHT : LOG_LEFT, // Alternate directions
+        .trap = is_trap,                                  // Set trap log
+        .trap_decay = is_trap ? LOG_TRAP_TICKS : 0        // Set trap timer
+    };
+
     // Check if another log is already present in the row, extend if it overlaps
     for (auto it = logs.begin(); it != logs.end(); ++it)
     {
@@ -849,7 +866,10 @@ void add_log(struct board_tile board[SIZE][SIZE], int x, int y_start, int length
                 for (int i = new_start_col; i < new_end_col && i < SIZE; i++)
                 {
                     if (i >= 0 && i < SIZE)
+                    {
                         board[x][i].type = log_type;
+                        board[x][i].log = log_tile;
+                    }
                 }
 
                 return;
@@ -865,7 +885,7 @@ void add_log(struct board_tile board[SIZE][SIZE], int x, int y_start, int length
         .direction = (x % 2 == 0) ? LOG_RIGHT : LOG_LEFT, // Alternate directions
         .move_counter = game_tick % LOG_MOVE_TICKS,       // Sync log movement
         .trap = is_trap,                                  // Set trap log
-        .trap_counter = LOG_TRAP_TICKS                    // Set trap timer
+        .trap_decay = LOG_TRAP_TICKS                      // Set trap timer
     };
     logs.push_back(new_log);
 
@@ -873,7 +893,10 @@ void add_log(struct board_tile board[SIZE][SIZE], int x, int y_start, int length
     for (int i = y_start; i < y_start + length && i < SIZE; i++)
     {
         if (i >= 0 && i < SIZE)
+        {
             board[x][i].type = log_type;
+            board[x][i].log = log_tile;
+        }
     }
 }
 
@@ -1230,7 +1253,11 @@ void update_logs(struct board_tile board[SIZE][SIZE], frog_data &frog)
                 if (!log_tiles.empty())
                     log_tiles.erase(log_tiles.begin());
                 else
+                {
                     board[it->row][i].type = log_type;
+                    board[it->row][i].log =
+                        {.direction = it->direction, .trap = it->trap, .trap_decay = it->trap_decay};
+                }
             }
 
             // Determine if frogger is on the log, then move frogger
@@ -1249,7 +1276,7 @@ void update_logs(struct board_tile board[SIZE][SIZE], frog_data &frog)
         }
         if (it != logs.end() && it->trap)
         {
-            if (--(it->trap_counter) <= 0)
+            if (--(it->trap_decay) <= 0)
             {
                 {
                     for (int i = it->start_col; i < it->start_col + it->length && i < SIZE; i++)

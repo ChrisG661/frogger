@@ -148,7 +148,7 @@ struct log_data
     int length;              // The length of the log.
     log_direction direction; // The direction the log is moving.
     int move_counter;        // The counter to track log movement.
-    int trap;                // The log is a trap.
+    bool trap;               // The log is a trap.
     int trap_decay;          // The decay counter for the trap log.
 };
 
@@ -156,7 +156,7 @@ struct log_data
 struct log_tile_data
 {
     log_direction direction; // The direction the log is moving.
-    int trap;                // The log is a trap.
+    bool trap;               // The log is a trap.
     int trap_decay;          // The decay counter for the trap log.
 };
 
@@ -889,7 +889,7 @@ void add_log(struct board_tile board[SIZE][SIZE], int x, int y_start, int length
         .direction = (x % 2 == 0) ? LOG_RIGHT : LOG_LEFT, // Alternate directions
         .move_counter = game_tick % LOG_MOVE_TICKS,       // Sync log movement
         .trap = is_trap,                                  // Set trap log
-        .trap_decay = LOG_TRAP_TICKS                      // Set trap timer
+        .trap_decay = is_trap ? LOG_TRAP_TICKS : 0        // Set trap timer
     };
     logs.push_back(new_log);
 
@@ -1291,6 +1291,7 @@ void update_logs(struct board_tile board[SIZE][SIZE], frog_data &frog)
                     }
                 }
                 it = logs.erase(it);
+                continue;
             }
             else
             {

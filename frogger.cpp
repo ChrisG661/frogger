@@ -28,6 +28,7 @@
 #include <mutex>
 #include <chrono>
 #include <vector>
+#include <random>
 
 #include "ftxui/component/component.hpp"
 #include "ftxui/component/component_base.hpp"
@@ -198,6 +199,7 @@ void remove_bug(struct board_tile board[SIZE][SIZE], int, int);
 void move_bugs(struct board_tile board[SIZE][SIZE]);
 void add_bank(struct board_tile board[SIZE][SIZE], int);
 void update_logs(struct board_tile board[SIZE][SIZE], frog_data &);
+void add_turtles_random(struct board_tile board[SIZE][SIZE], int, int);
 
 // Prints out the current state of the board.
 Element print_board(struct board_tile board[SIZE][SIZE]);
@@ -252,6 +254,8 @@ int main(void)
     vector<Command> commands = {
         {'t', "Add Turtle", [](struct board_tile board[SIZE][SIZE], int x, int y, int)
          { add_turtle(board, x, y); }},
+        {'T', "Add Turtles Randomly", [](struct board_tile board[SIZE][SIZE], int x, int num_turtles, int)
+         { add_turtles_random(board, x, num_turtles); }},
         {'l', "Add Log", [](struct board_tile board[SIZE][SIZE], int x, int y_start, int y_end)
          { add_log(board, x, y_start, y_end, FALSE); }},
         {'L', "Add Trap Log", [](struct board_tile board[SIZE][SIZE], int x, int y_start, int y_end)
@@ -1340,7 +1344,6 @@ Element print_board(struct board_tile board[SIZE][SIZE])
                     Color::Blend(Color::DarkBlue, Color::HSVA(24, 255, 150, log_alpha));
                 type_pixel.foreground_color =
                     Color::Blend(Color::DarkBlue, Color::HSVA(24, 255, 180, log_alpha));
-                
             }
             else
             {
@@ -1406,4 +1409,57 @@ Pixel type_to_pixel(enum tile_type type)
         p.character = "  ";
     }
     return p;
+}
+
+/*
+ * Function: add_turtles_random
+ * ---------------------
+ * Adds a number of turtles to the board at the given row.
+ * The turtles will be placed in random columns.
+ *
+ * board: The 2D array representing the board.
+ * row: The row to add the turtles.
+ * num_turtles: The number of turtles to add.
+ */
+void add_turtles_random(struct board_tile board[SIZE][SIZE], int row, int num_turtles)
+{
+    if (row < 1 || row >= SIZE - 1)
+        return;
+
+    random_device rd;
+    mt19937 gen(rd());
+    // Random column for the turtle
+    uniform_int_distribution<> random_col(0, SIZE - 1);
+    // Random length for consecutive turtles
+    uniform_int_distribution<> random_length(0, 4);
+
+    // Check if there is enough water tiles to place the turtles
+    int water_tiles = 0;
+    for (int i = 0; i < SIZE; i++)
+    {
+        if (board[row][i].type == WATER)
+            water_tiles++;
+        if (water_tiles >= num_turtles)
+            break;
+    }
+    // If there are not enough water tiles, the turtles will not be placed.
+    if (water_tiles < num_turtles)
+        return;
+
+    int turtles_placed = 0;
+    while (turtles_placed < num_turtles)
+    {
+        int col = random_col(gen);
+        int length = random_length(gen);
+        if (col + length >= SIZE)
+            length = SIZE - col - 1;
+        for (int i = col; i < col + length && turtles_placed < num_turtles && i < SIZE; i++)
+        {
+            if (i >= 0 && board[row][i].type == WATER)
+            {
+                add_turtle(board, row, i);
+                turtles_placed++;
+            }
+        }
+    }
 }

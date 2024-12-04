@@ -1278,16 +1278,22 @@ void update_logs(struct board_tile board[SIZE][SIZE], frog_data &frog)
         {
             if (--(it->trap_decay) <= 0)
             {
+                for (int i = it->start_col; i < it->start_col + it->length && i < SIZE; i++)
                 {
-                    for (int i = it->start_col; i < it->start_col + it->length && i < SIZE; i++)
+                    if (i >= 0 && i < SIZE)
                     {
-                        if (i >= 0 && i < SIZE)
-                        {
-                            board[it->row][i].type = WATER;
-                            remove_bug(board, it->row, i);
-                        }
+                        board[it->row][i].type = WATER;
+                        remove_bug(board, it->row, i);
                     }
-                    it = logs.erase(it);
+                }
+                it = logs.erase(it);
+            }
+            else
+            {
+                for (int i = it->start_col; i < it->start_col + it->length && i < SIZE; i++)
+                {
+                    if (i >= 0 && i < SIZE)
+                        board[it->row][i].log.trap_decay = it->trap_decay;
                 }
             }
         }
@@ -1325,6 +1331,16 @@ Element print_board(struct board_tile board[SIZE][SIZE])
                 type_pixel = type_to_pixel(board[row][col].type);
                 type_pixel.foreground_color = Color::Red;
                 type_pixel.character = "🐞";
+            }
+            else if (board[row][col].type == TRAP_LOG)
+            {
+                type_pixel = type_to_pixel(TRAP_LOG);
+                int log_alpha = 255 * board[row][col].log.trap_decay / LOG_TRAP_TICKS;
+                type_pixel.background_color =
+                    Color::Blend(Color::DarkBlue, Color::HSVA(24, 255, 150, log_alpha));
+                type_pixel.foreground_color =
+                    Color::Blend(Color::DarkBlue, Color::HSVA(24, 255, 180, log_alpha));
+                
             }
             else
             {

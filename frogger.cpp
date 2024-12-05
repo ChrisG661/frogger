@@ -529,7 +529,7 @@ Component create_setup_sidebar(struct board_tile game_board[SIZE][SIZE], frog_da
     Component setup_input = Input(&setup_command, "Input command", setup_input_option);
     Component setup_menu =
         Menu([&]
-        {
+             {
                 vector<string> entries;
             for (Command &command : commands)
                     entries.push_back(command.command_name);
@@ -1464,7 +1464,7 @@ Pixel type_to_pixel(enum tile_type type)
         p.foreground_color = Color::Blue;
         p.background_color = Color::DarkBlue;
         p.bold = FALSE;
-        p.character = "▚▚";
+        p.character = "╭╯";
         break;
     case TURTLE:
         p.foreground_color = Color::Green;

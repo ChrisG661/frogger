@@ -33,6 +33,7 @@
 #include <chrono>
 #include <vector>
 #include <random>
+#include <sstream>
 
 #include "ftxui/component/component.hpp"
 #include "ftxui/component/component_base.hpp"
@@ -599,19 +600,17 @@ Component create_setup_sidebar(struct board_tile game_board[SIZE][SIZE], frog_da
             {
                 if (setup_command.empty())
                     return false;
-                int command_args[3] = {0, 0, 0};
+                int command_args[3] = {-1, -1, -1};
                 char command = setup_command[0];
 
-                int i = 0;
-                for (int j = 2; j < setup_command.size(); j++)
-                {
-                    if (setup_command[j] == ' ')
-                    {
-                        i++;
-                        continue;
-                    }
-                    command_args[i] = command_args[i] * 10 + (setup_command[j] - '0');
-                }
+                string temp;
+                vector<string> args;
+                stringstream s(setup_command);
+                while (s >> temp)
+                    args.push_back(temp);
+
+                for (int i = 1; i < args.size(); i++)
+                    command_args[i - 1] = stoi(args[i]);
 
                 bool valid_command = FALSE;
                 auto it = find_if(commands.begin(), commands.end(), [&](const Command &cmd)

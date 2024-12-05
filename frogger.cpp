@@ -63,6 +63,7 @@ using namespace ftxui;
 
 // Additional constants
 #define TILE board[row][col]
+#define DOUBLE_JUMP 5      // 5 double jumps
 #define TPS 20             // 20 ticks per second
 #define MOVE_COOLDOWN 200  // 200 milliseconds delay
 #define BUGS_MOVE_TICKS 3  // 3 ticks per bug movement
@@ -134,6 +135,7 @@ struct frog_data
     int x;                                           // The x-coordinate of the frog.
     int y;                                           // The y-coordinate of the frog.
     int lives;                                       // The number of lives the player has.
+    int double_jump;                                 // The number of double jumps the player has.
     int score;                                       // The current score of the player.
     int high_score;                                  // The highest score achieved by the player.
     chrono::steady_clock::time_point last_move_time; // The last time the frogger moved.
@@ -197,7 +199,7 @@ string load_file(string);
 void load_board(struct board_tile board[SIZE][SIZE], frog_data &, string);
 game_event check_state(struct board_tile board[SIZE][SIZE], frog_data &, enum game_state &);
 void update_score(frog_data &, game_event);
-void move_frogger(struct board_tile board[SIZE][SIZE], frog_data &, enum direction);
+void move_frogger(struct board_tile board[SIZE][SIZE], frog_data &, enum direction, bool);
 
 // Game thread function
 mutex game_mutex;
@@ -255,7 +257,7 @@ int main(void)
     game_state state = GAME;
     game_event current_event = NO_EVENT;
     frog_data frog =
-        {.x = XSTART, .y = YSTART, .lives = LIVES, .score = 0, .last_move_time = chrono::steady_clock::now()};
+        {.x = XSTART, .y = YSTART, .lives = LIVES, .double_jump = DOUBLE_JUMP, .score = 0, .last_move_time = chrono::steady_clock::now()};
     string key_pressed = " ";
     Element message[2] = {text(""), text("")};
     int setup_selected = 0, setup_cursor = 0;
@@ -504,6 +506,7 @@ Component create_board_canvas(struct board_tile game_board[SIZE][SIZE], frog_dat
                     return false;
 
                 direction move_direction = STAY;
+                bool double_jump = FALSE;
                 if (event == Event::Character('w'))
                     move_direction = FORWARD;
                 else if (event == Event::Character('s'))
@@ -512,10 +515,30 @@ Component create_board_canvas(struct board_tile game_board[SIZE][SIZE], frog_dat
                     move_direction = LEFT;
                 else if (event == Event::Character('d'))
                     move_direction = RIGHT;
+                else if (event == Event::Character('W'))
+                {
+                    move_direction = FORWARD;
+                    double_jump = TRUE;
+                }
+                else if (event == Event::Character('S'))
+                {
+                    move_direction = BACKWARD;
+                    double_jump = TRUE;
+                }
+                else if (event == Event::Character('A'))
+                {
+                    move_direction = LEFT;
+                    double_jump = TRUE;
+                }
+                else if (event == Event::Character('D'))
+                {
+                    move_direction = RIGHT;
+                    double_jump = TRUE;
+                }
 
                 if (state == GAME && move_direction != STAY)
                 {
-                    move_frogger(game_board, frog, move_direction);
+                    move_frogger(game_board, frog, move_direction, double_jump);
                 }
                 return false;
             });
@@ -535,9 +558,20 @@ Component create_game_sidebar(frog_data &frog)
                         text("Lives:"),
                         hbox([&]
                              { Elements hearts;
-                                 for (int i = 0; i < frog.lives; i++)
+                             int i = 0;
+                                 for (i; i < frog.lives; i++)
                                      hearts.push_back(text("💗"));
-                                 return hearts; }())}); });
+                                 for (i; i < LIVES; i++)
+                                     hearts.push_back(text("💔"));
+                                 return hearts; }()),
+                        text("Double Jump:"),
+                        hbox([&]
+                             { Elements jumps;
+                                 for (int i = 0; i < frog.double_jump; i++)
+                                     jumps.push_back(text("⏫"));
+                                if (frog.double_jump == 0)
+                                    jumps.push_back(text("❌"));
+                                 return jumps; }())}); });
     return game_sidebar;
 }
 
@@ -751,7 +785,7 @@ void restart_game(struct board_tile board[SIZE][SIZE], frog_data &frog, game_sta
     state = GAME;
     current_event = NO_EVENT;
     frog =
-        {.x = XSTART, .y = YSTART, .lives = LIVES, .score = 0, .last_move_time = chrono::steady_clock::now()};
+        {.x = XSTART, .y = YSTART, .lives = LIVES, .double_jump = DOUBLE_JUMP, .score = 0, .last_move_time = chrono::steady_clock::now()};
     message[0] = text("Game restarted!") | color(Color::Cyan) | blink;
 }
 
@@ -1203,12 +1237,17 @@ void remove_log(struct board_tile board[SIZE][SIZE], int x, int y)
  * x: The x-coordinate of the frogger.
  * y: The y-coordinate of the frogger.
  * move_direction: The direction the frogger will move.
+ * double_jump: A boolean indicating if the frogger will double jump.
  */
-void move_frogger(struct board_tile board[SIZE][SIZE], frog_data &frog, direction move_direction)
+void move_frogger(struct board_tile board[SIZE][SIZE], frog_data &frog, direction move_direction, bool double_jump = FALSE)
 {
     // Frogger will not move if the direction is STAY.
     if (move_direction == STAY)
         return;
+
+    // Frogger will not double jump if the double jump is not available.
+    if (double_jump && frog.double_jump <= 0)
+        double_jump = FALSE;
 
     // Frogger will not move if the move cooldown has not elapsed.
     auto current_time = chrono::steady_clock::now();
@@ -1222,19 +1261,20 @@ void move_frogger(struct board_tile board[SIZE][SIZE], frog_data &frog, directio
     frog.last_move_time = current_time;
 
     int new_x = frog.x, new_y = frog.y;
+    int move_distance = double_jump ? 2 : 1;
     switch (move_direction)
     {
     case FORWARD:
-        new_x--;
+        new_x -= move_distance;
         break;
     case BACKWARD:
-        new_x++;
+        new_x += move_distance;
         break;
     case LEFT:
-        new_y--;
+        new_y -= move_distance;
         break;
     case RIGHT:
-        new_y++;
+        new_y += move_distance;
         break;
     default:
         break;
@@ -1243,6 +1283,10 @@ void move_frogger(struct board_tile board[SIZE][SIZE], frog_data &frog, directio
     // Frogger will not move if the new position is out of bounds.
     if (new_x < 0 || new_x >= SIZE || new_y < 0 || new_y >= SIZE)
         return;
+
+    // Decrease double jump if it is used
+    if (double_jump)
+        frog.double_jump--;
 
     // Update frogger position on the board
     board[frog.x][frog.y].occupied = FALSE;

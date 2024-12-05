@@ -527,15 +527,14 @@ Component create_setup_sidebar(struct board_tile game_board[SIZE][SIZE], frog_da
     InputOption setup_input_option = InputOption::Default();
     setup_input_option.cursor_position = &setup_cursor;
     Component setup_input = Input(&setup_command, "Input command", setup_input_option);
-    Component setup_menu = Container::Vertical(
-        [&]
+    Component setup_menu =
+        Menu([&]
         {
-            Components entries;
+                vector<string> entries;
             for (Command &command : commands)
-                entries.push_back(MenuEntry(command.command_name));
-            return entries;
-        }(),
-        &setup_selected);
+                    entries.push_back(command.command_name);
+                return entries; }(),
+             &setup_selected, MenuOption());
 
     setup_input |= CatchEvent(
         [&, game_board, setup_menu, message](Event event)

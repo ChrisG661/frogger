@@ -127,10 +127,12 @@ enum log_direction
 // Frog data struct to represent the frog on the board.
 struct frog_data
 {
-    int x;
-    int y;
-    int lives;
-    chrono::steady_clock::time_point last_move_time;
+    int x;                                           // The x-coordinate of the frog.
+    int y;                                           // The y-coordinate of the frog.
+    int lives;                                       // The number of lives the player has.
+    int score;                                       // The current score of the player.
+    int high_score;                                  // The highest score achieved by the player.
+    chrono::steady_clock::time_point last_move_time; // The last time the frogger moved.
 };
 
 // Bug struct to represent a bug on the board.
@@ -184,6 +186,7 @@ void init_board(struct board_tile board[SIZE][SIZE]);
 string load_file(string);
 void load_board(struct board_tile board[SIZE][SIZE], frog_data &, string);
 game_event check_state(struct board_tile board[SIZE][SIZE], frog_data &, enum game_state &);
+void update_score(frog_data &, game_event);
 
 mutex game_mutex;
 void game_update_thread(struct board_tile board[SIZE][SIZE], frog_data &,
@@ -206,10 +209,10 @@ Element print_board(struct board_tile board[SIZE][SIZE]);
 Pixel type_to_pixel(enum tile_type type);
 
 // FTXUI component functions
-Component create_board_canvas(struct board_tile game_board[SIZE][SIZE], frog_data &,
+Component create_board_canvas(struct board_tile game_board[SIZE][SIZE], frog_data &frog,
                               game_state &state, game_event &event, Element message[2],
                               int &current_tab);
-Component create_game_sidebar(int &lives);
+Component create_game_sidebar(frog_data &frog);
 Component create_setup_sidebar(struct board_tile game_board[SIZE][SIZE], frog_data &frog,
                                game_state &state, vector<Command> &commands, int &setup_selected,
                                int &setup_cursor, string &setup_command, Element message[2],
@@ -239,7 +242,8 @@ int main(void)
 
     game_state state = GAME;
     game_event current_event = NO_EVENT;
-    frog_data frog = {XSTART, YSTART, LIVES, chrono::steady_clock::now()};
+    frog_data frog =
+        {.x = XSTART, .y = YSTART, .lives = LIVES, .score = 0, .last_move_time = chrono::steady_clock::now()};
     string key_pressed = " ";
     Element message[2] = {text(""), text("")};
     int setup_selected = 0, setup_cursor = 0;
@@ -249,7 +253,7 @@ int main(void)
     // Initialize FTXUI components
     ScreenInteractive screen = ScreenInteractive::Fullscreen();
 
-    Component game_sidebar = create_game_sidebar(frog.lives);
+    Component game_sidebar = create_game_sidebar(frog);
 
     vector<Command> commands = {
         {'t', "Add Turtle", [](struct board_tile board[SIZE][SIZE], int x, int y, int)
@@ -373,6 +377,7 @@ void game_update_thread(struct board_tile board[SIZE][SIZE], frog_data &frog,
 {
     using namespace chrono;
     milliseconds tick_duration = milliseconds(1000 / TPS);
+    frog_data prev_frog = frog;
 
     while (state != QUIT)
     {
@@ -387,14 +392,21 @@ void game_update_thread(struct board_tile board[SIZE][SIZE], frog_data &frog,
             move_bugs(board);
             current_event = check_state(board, frog, state);
 
+            // Determine if the frogger moved from previous position
+            if (current_event == NO_EVENT &&
+                (frog.x != prev_frog.x || frog.y != prev_frog.y))
+                current_event = MOVED;
+
+            update_score(frog, current_event);
+
             // Update message based on event
             switch (current_event)
             {
             case REACHED_LILLYPAD:
-                message[0] = text("You won!");
+                message[0] = text("You reached the lilypad!") | color(Color::Green);
                 break;
             case ON_WATER:
-                message[0] = text("You fell in the water!") | color(Color::Red);
+                message[0] = text("You fell in the water!") | color(Color::DodgerBlue3);
                 break;
             case HIT_BY_BUG:
                 message[0] = text("You were hit by a bug!") | color(Color::Orange1);
@@ -402,18 +414,37 @@ void game_update_thread(struct board_tile board[SIZE][SIZE], frog_data &frog,
             case NO_LIVES:
                 message[0] = text("You ran out of lives!") | color(Color::Red);
                 break;
+            case MOVED:
+                message[0] = text("You moved.");
+                break;
             default:
                 break;
             }
 
+            prev_frog = frog;
             game_tick++;
             if (game_tick == INT_MAX)
                 game_tick = 0;
+
+            // Trigger screen refresh
+            screen.PostEvent(Event::Custom);
         }
 
-        // Trigger screen refresh
-        if (state == GAME)
+        // Check for game over conditions
+        if (state == WIN)
+        {
+            this_thread::sleep_for(2s);
+            message[0] = text("Congratulations! You won!") | color(Color::Gold1) | blink;
             screen.PostEvent(Event::Custom);
+            break;
+        }
+        else if (state == LOSE)
+        {
+            this_thread::sleep_for(2s);
+            message[0] = text("Game over! You lost!") | color(Color::Red3) | blink;
+            screen.PostEvent(Event::Custom);
+            break;
+        }
 
         // Sleep for remainder of tick
         time_point end_time = steady_clock::now();
@@ -454,7 +485,7 @@ Component create_board_canvas(struct board_tile game_board[SIZE][SIZE], frog_dat
                 else if (event == Event::Character('d'))
                     move_direction = RIGHT;
 
-                if (move_direction != STAY)
+                if (state == GAME && move_direction != STAY)
                 {
                     move_frogger(game_board, frog, move_direction);
                 }
@@ -463,16 +494,20 @@ Component create_board_canvas(struct board_tile game_board[SIZE][SIZE], frog_dat
     return board_canvas;
 }
 
-Component create_game_sidebar(int &lives)
+Component create_game_sidebar(frog_data &frog)
 {
     Component game_sidebar =
         Renderer([&]
                  { return vbox(
-                       {filler(),
+                       {text("Score:"),
+                        text(to_wstring(frog.score)) | bold | color(Color::Yellow),
+                        text("High Score:"),
+                        text(to_wstring(frog.high_score)) | bold | color(Color::Yellow),
+                        filler(),
                         text("Lives:"),
                         hbox([&]
                              { Elements hearts;
-                                 for (int i = 0; i < lives; i++)
+                                 for (int i = 0; i < frog.lives; i++)
                                      hearts.push_back(text("💗"));
                                  return hearts; }())}); });
     return game_sidebar;
@@ -802,7 +837,43 @@ game_event check_state(board_tile board[SIZE][SIZE], frog_data &frog, game_state
             return current_event;
         }
     }
-    return MOVED;
+    return NO_EVENT;
+}
+
+/*
+ * Function: update_score
+ * ---------------------
+ * Updates the score based on the game event.
+ *
+ * frog: The frog data struct.
+ * event: The game event.
+ */
+void update_score(frog_data &frog, game_event event)
+{
+    switch (event)
+    {
+    case MOVED:
+        frog.score += 10;
+        break;
+    case ON_WATER:
+        frog.score -= 15;
+        break;
+    case HIT_BY_BUG:
+        frog.score -= 15;
+        break;
+    case NO_LIVES:
+        frog.score -= 15;
+        break;
+    case REACHED_LILLYPAD:
+        frog.score += 100;
+        break;
+    default:
+        break;
+    }
+    if (frog.score < 0)
+        frog.score = 0;
+    if (frog.score > frog.high_score)
+        frog.high_score = frog.score;
 }
 
 /*

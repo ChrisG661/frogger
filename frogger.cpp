@@ -777,6 +777,7 @@ void load_board(struct board_tile board[SIZE][SIZE], frog_data &frog, string boa
             {
                 row++;
                 col = 0;
+                continue;
             }
             else
                 continue;
@@ -795,6 +796,25 @@ void load_board(struct board_tile board[SIZE][SIZE], frog_data &frog, string boa
                 board[row][col].type = LOG;
                 board[row][col].log.trap = FALSE;
                 board[row][col].log.direction = LOG_LEFT;
+                break;
+            case 'R':
+                board[row][col].type = LOG;
+                board[row][col].log.trap = FALSE;
+                board[row][col].log.direction = LOG_RIGHT;
+                break;
+            case 'l':
+                board[row][col].type = TRAP_LOG;
+                board[row][col].log.trap = TRUE;
+                board[row][col].log.trap_triggered = FALSE;
+                board[row][col].log.trap_decay = LOG_TRAP_TICKS;
+                board[row][col].log.direction = LOG_LEFT;
+                break;
+            case 'r':
+                board[row][col].type = TRAP_LOG;
+                board[row][col].log.trap = TRUE;
+                board[row][col].log.trap_triggered = FALSE;
+                board[row][col].log.trap_decay = LOG_TRAP_TICKS;
+                board[row][col].log.direction = LOG_RIGHT;
                 break;
             case 'x':
                 board[row][col].type = BANK;
@@ -824,6 +844,67 @@ void load_board(struct board_tile board[SIZE][SIZE], frog_data &frog, string boa
             }
             col++;
         }
+    }
+
+    // Add logs to the logs vector
+    for (int row = 0; row < SIZE; row++)
+    {
+        for (int col = 0; col < SIZE; col++)
+        {
+            if (board[row][col].type == LOG || board[row][col].type == TRAP_LOG)
+            {
+                bool found = FALSE;
+                for (auto it = logs.begin(); it != logs.end(); ++it)
+                {
+                    if (it->row == row && it->start_col + it->length == col)
+                    {
+                        it->length++;
+                        found = TRUE;
+                        break;
+                    }
+                    else if (it->row == row && it->start_col - 1 == col)
+                    {
+                        it->start_col--;
+                        it->length++;
+                        found = TRUE;
+                        break;
+                    }
+                }
+                if (!found)
+                {
+                    log_data new_log = {
+                        .row = row,
+                        .start_col = col,
+                        .length = 1,
+                        .direction = board[row][col].log.direction,
+                        .move_counter = game_tick % LOG_MOVE_TICKS,
+                        .trap = board[row][col].log.trap,
+                        .trap_triggered = FALSE,
+                        .trap_decay = board[row][col].log.trap_decay};
+                    logs.push_back(new_log);
+                }
+            }
+        }
+    }
+
+    // Join logs if they are adjacent
+    for (auto it = logs.begin(); it != logs.end();)
+    {
+        bool found = FALSE;
+        for (auto it2 = logs.begin(); it2 != logs.end();)
+        {
+            if (it != it2 && it->row == it2->row && it->start_col + it->length == it2->start_col)
+            {
+                it->length += it2->length;
+                it2 = logs.erase(it2);
+                found = TRUE;
+                break;
+            }
+            else
+                ++it2;
+        }
+        if (!found)
+            ++it;
     }
 }
 
@@ -1162,7 +1243,7 @@ void move_frogger(struct board_tile board[SIZE][SIZE], frog_data &frog, directio
     // Frogger will not move if the new position is out of bounds.
     if (new_x < 0 || new_x >= SIZE || new_y < 0 || new_y >= SIZE)
         return;
-    
+
     // Update frogger position on the board
     board[frog.x][frog.y].occupied = FALSE;
     board[new_x][new_y].occupied = TRUE;
@@ -1234,7 +1315,7 @@ void move_bugs(struct board_tile board[SIZE][SIZE])
     bugs_move_counter = 0;
 
     // Vector to store new bug positions
-    vector<pair<int, int>> new_bugs_positions; 
+    vector<pair<int, int>> new_bugs_positions;
 
     // Sort bugs_positions to ensure bugs are moved from top to bottom, left to right
     sort(bugs_positions.begin(), bugs_positions.end(),
@@ -1334,7 +1415,7 @@ void update_logs(struct board_tile board[SIZE][SIZE], frog_data &frog)
         {
             // Reset move counter
             it->move_counter = 0;
-            
+
             // Vector to store log tiles before moving
             vector<board_tile> log_tiles;
             tile_type log_type = it->trap ? TRAP_LOG : LOG;

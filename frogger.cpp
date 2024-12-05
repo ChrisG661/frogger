@@ -407,6 +407,7 @@ void game_update_thread(struct board_tile board[SIZE][SIZE], frog_data &frog,
 
         if (state == GAME)
         {
+            // Lock game mutex to prevent concurrent access
             lock_guard<mutex> lock(game_mutex);
 
             // Update game state
@@ -443,6 +444,7 @@ void game_update_thread(struct board_tile board[SIZE][SIZE], frog_data &frog,
                 break;
             }
 
+            // Update previous frog position and increment game tick
             prev_frog = frog;
             game_tick++;
             if (game_tick == INT_MAX)
@@ -452,7 +454,7 @@ void game_update_thread(struct board_tile board[SIZE][SIZE], frog_data &frog,
             screen.PostEvent(Event::Custom);
         }
 
-        // Check for game over conditions
+        // Check for game over conditions and display message
         if (state == WIN)
         {
             this_thread::sleep_for(2s);
@@ -770,6 +772,7 @@ void load_board(struct board_tile board[SIZE][SIZE], frog_data &frog, string boa
     {
         if (col >= SIZE)
         {
+            // Move to the next row if the column exceeds the board size.
             if (board_string[i] == '\n')
             {
                 row++;
@@ -861,11 +864,13 @@ string load_file(string filename)
 game_event check_state(board_tile board[SIZE][SIZE], frog_data &frog, game_state &state)
 {
     board_tile &current_tile = board[frog.x][frog.y];
+    // Sets game state to WIN if the frogger reaches the lilypad.
     if (current_tile.type == LILLYPAD)
     {
         state = WIN;
         return REACHED_LILLYPAD;
     }
+    // Resets the frogger if it falls in the water or is hit by a bug.
     else if ((current_tile.type == WATER) ||
              (current_tile.bug.present))
     {
@@ -902,6 +907,7 @@ game_event check_state(board_tile board[SIZE][SIZE], frog_data &frog, game_state
  */
 void update_score(frog_data &frog, game_event event)
 {
+    // Updates the score based on the game event.
     switch (event)
     {
     case MOVED:
@@ -922,6 +928,7 @@ void update_score(frog_data &frog, game_event event)
     default:
         break;
     }
+    // Ensures the score does not go below 0 and updates the high score.
     if (frog.score < 0)
         frog.score = 0;
     if (frog.score > frog.high_score)
@@ -985,6 +992,7 @@ void add_log(struct board_tile board[SIZE][SIZE], int x, int y_start, int length
                 (y_start <= it->start_col && y_start + length >= it->start_col + it->length)             // New log overlaps existing log
             )
             {
+                // Extend existing log
                 int new_start_col = min(it->start_col, y_start);
                 int new_end_col = max(it->start_col + it->length, y_start + length);
                 it->start_col = new_start_col;
@@ -1117,15 +1125,18 @@ void remove_log(struct board_tile board[SIZE][SIZE], int x, int y)
  */
 void move_frogger(struct board_tile board[SIZE][SIZE], frog_data &frog, direction move_direction)
 {
+    // Frogger will not move if the direction is STAY.
     if (move_direction == STAY)
         return;
 
+    // Frogger will not move if the move cooldown has not elapsed.
     auto current_time = chrono::steady_clock::now();
     auto elapsed = chrono::duration_cast<chrono::milliseconds>(
         current_time - frog.last_move_time);
     if (elapsed.count() < MOVE_COOLDOWN)
         return;
 
+    // Lock game mutex to prevent concurrent access
     lock_guard<mutex> lock(game_mutex);
     frog.last_move_time = current_time;
 
@@ -1151,7 +1162,8 @@ void move_frogger(struct board_tile board[SIZE][SIZE], frog_data &frog, directio
     // Frogger will not move if the new position is out of bounds.
     if (new_x < 0 || new_x >= SIZE || new_y < 0 || new_y >= SIZE)
         return;
-
+    
+    // Update frogger position on the board
     board[frog.x][frog.y].occupied = FALSE;
     board[new_x][new_y].occupied = TRUE;
     frog.x = new_x;
@@ -1195,6 +1207,7 @@ void remove_bug(struct board_tile board[SIZE][SIZE], int x, int y)
     if (x < 1 || x >= SIZE - 1 || y < 0 || y >= SIZE)
         return;
 
+    // Remove bug from the board and bugs_positions vector.
     if (board[x][y].bug.present)
     {
         board[x][y].bug.present = FALSE;
@@ -1212,6 +1225,7 @@ void remove_bug(struct board_tile board[SIZE][SIZE], int x, int y)
  */
 void move_bugs(struct board_tile board[SIZE][SIZE])
 {
+    // Bugs will only move every BUGS_MOVE_TICKS ticks.
     if (bugs_move_counter < BUGS_MOVE_TICKS)
     {
         bugs_move_counter++;
@@ -1219,7 +1233,8 @@ void move_bugs(struct board_tile board[SIZE][SIZE])
     }
     bugs_move_counter = 0;
 
-    vector<pair<int, int>> new_bugs_positions; // Vector to store new bug positions
+    // Vector to store new bug positions
+    vector<pair<int, int>> new_bugs_positions; 
 
     // Sort bugs_positions to ensure bugs are moved from top to bottom, left to right
     sort(bugs_positions.begin(), bugs_positions.end(),
@@ -1317,8 +1332,10 @@ void update_logs(struct board_tile board[SIZE][SIZE], frog_data &frog)
     {
         if (++(it->move_counter) >= LOG_MOVE_TICKS)
         {
+            // Reset move counter
             it->move_counter = 0;
-
+            
+            // Vector to store log tiles before moving
             vector<board_tile> log_tiles;
             tile_type log_type = it->trap ? TRAP_LOG : LOG;
 
@@ -1419,6 +1436,7 @@ void update_logs(struct board_tile board[SIZE][SIZE], frog_data &frog)
                 continue;
             }
 
+            // Remove log if trap fully decayed
             if (--(it->trap_decay) <= 0)
             {
                 for (int i = it->start_col; i < it->start_col + it->length && i < SIZE; i++)
@@ -1434,6 +1452,7 @@ void update_logs(struct board_tile board[SIZE][SIZE], frog_data &frog)
             }
             else
             {
+                // Update trap decay on board tiles
                 for (int i = it->start_col; i < it->start_col + it->length && i < SIZE; i++)
                 {
                     if (i >= 0 && i < SIZE)
@@ -1478,6 +1497,7 @@ Element print_board(struct board_tile board[SIZE][SIZE])
             }
             else if (board[row][col].type == TRAP_LOG)
             {
+                // Blend trap log color based on decay
                 type_pixel = type_to_pixel(TRAP_LOG);
                 int log_alpha = 255 * board[row][col].log.trap_decay / LOG_TRAP_TICKS;
                 type_pixel.background_color =

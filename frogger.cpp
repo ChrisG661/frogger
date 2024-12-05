@@ -10,15 +10,19 @@
 //    3) November 7, 2024 (Phase 2.3)
 //    4) November 15, 2024 (Phase 3.3)
 //    5) November 25, 2024 (Added comments)
-//    6) November 29, 2024 (Completed FTXUI implementation)
+//    6) November 29, 2024 (Phase 4.1: Completed FTXUI implementation)
+//    7) December 2, 2024 (Phase 4.2: Implemented game loop and threading)
+//    8) December 4, 2024 (Phase 4.3: Added new game mechanics and commands)
 //
 // This program is a simple Frogger game made to fulfill the Programming
 // Fundamentals final project. The player controls the frog to reach the
 // lilypads on the other side of the river by avoiding the water and bugs.
 // The player can move the frog using the 'w', 's', 'a', and 'd' keys.
-// The player can also place turtles, logs, and bugs on the board.
-// The player can also clear a row, remove a log, and add a bug to the board.
-// The player can quit the game by pressing 'q'.
+// The player can also configure the board by pressing 'o' to access the
+// setup menu. In the setup menu, the player can add turtles, logs, bugs,
+// clear a row, remove a log, and add a bank to the board. The board can
+// also be loaded from a file by typing 'O' followed by the filename.
+// The player can quit the game by pressing Ctrl+Q.
 
 #include <stdio.h>
 #include <iostream>
@@ -182,21 +186,24 @@ struct board_tile
 /////////////////////////////  FUNCTION PROTOTYPES  ////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
+// Game loop functions
 void init_board(struct board_tile board[SIZE][SIZE]);
 string load_file(string);
 void load_board(struct board_tile board[SIZE][SIZE], frog_data &, string);
 game_event check_state(struct board_tile board[SIZE][SIZE], frog_data &, enum game_state &);
 void update_score(frog_data &, game_event);
+void move_frogger(struct board_tile board[SIZE][SIZE], frog_data &, enum direction);
 
+// Game thread function
 mutex game_mutex;
 void game_update_thread(struct board_tile board[SIZE][SIZE], frog_data &,
                         game_state &, game_event &, ScreenInteractive &, Element[2]);
 
+// Game setup functions
 void add_turtle(struct board_tile board[SIZE][SIZE], int, int);
 void add_log(struct board_tile board[SIZE][SIZE], int, int, int, bool);
 void clear_row(struct board_tile board[SIZE][SIZE], int);
 void remove_log(struct board_tile board[SIZE][SIZE], int, int);
-void move_frogger(struct board_tile board[SIZE][SIZE], frog_data &, enum direction);
 void add_bug(struct board_tile board[SIZE][SIZE], int, int);
 void remove_bug(struct board_tile board[SIZE][SIZE], int, int);
 void move_bugs(struct board_tile board[SIZE][SIZE]);
@@ -204,7 +211,7 @@ void add_bank(struct board_tile board[SIZE][SIZE], int);
 void update_logs(struct board_tile board[SIZE][SIZE], frog_data &);
 void add_turtles_random(struct board_tile board[SIZE][SIZE], int, int);
 
-// Prints out the current state of the board.
+// Board displaying functions
 Element print_board(struct board_tile board[SIZE][SIZE]);
 Pixel type_to_pixel(enum tile_type type);
 
@@ -457,7 +464,7 @@ void game_update_thread(struct board_tile board[SIZE][SIZE], frog_data &frog,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-///////////////////////////// ///FTXUI FUNCTIONS ///////////////////////////////
+//////////////////////////////// FTXUI FUNCTIONS ///////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////
 
 Component create_board_canvas(struct board_tile game_board[SIZE][SIZE], frog_data &frog,
@@ -803,7 +810,7 @@ string load_file(string filename)
  * board: The 2D array representing the board.
  * x_frog: The x-coordinate of the frogger.
  * y_frog: The y-coordinate of the frogger.
- * lives: The number of lives the player has.
+ * frog: The frog data struct.
  * state: The current state of the game.
  */
 game_event check_state(board_tile board[SIZE][SIZE], frog_data &frog, game_state &state)

@@ -168,8 +168,9 @@ struct log_tile_data
 
 struct Command
 {
-    char setup_char;
-    string command_name;
+    char setup_char;      // The character to trigger the command.
+    string command_name;  // The name of the command.
+    string command_usage; // The usage and parameters of the command.
     function<void(struct board_tile[SIZE][SIZE], int, int, int)> command_function;
 };
 
@@ -263,28 +264,28 @@ int main(void)
     Component game_sidebar = create_game_sidebar(frog);
 
     vector<Command> commands = {
-        {'t', "Add Turtle", [](struct board_tile board[SIZE][SIZE], int x, int y, int)
+        {'t', "Add Turtle", "t <row> <col>", [](struct board_tile board[SIZE][SIZE], int x, int y, int)
          { add_turtle(board, x, y); }},
-        {'T', "Add Turtles Randomly", [](struct board_tile board[SIZE][SIZE], int x, int num_turtles, int)
+        {'T', "Add Turtles Randomly", "T <row> <num_turtles>", [](struct board_tile board[SIZE][SIZE], int x, int num_turtles, int)
          { add_turtles_random(board, x, num_turtles); }},
-        {'l', "Add Log", [](struct board_tile board[SIZE][SIZE], int x, int y_start, int y_end)
-         { add_log(board, x, y_start, y_end, FALSE); }},
-        {'L', "Add Trap Log", [](struct board_tile board[SIZE][SIZE], int x, int y_start, int y_end)
-         { add_log(board, x, y_start, y_end, TRUE); }},
-        {'c', "Clear Row", [](struct board_tile board[SIZE][SIZE], int x, int, int)
+        {'l', "Add Log", "l <row> <col_start> <length>", [](struct board_tile board[SIZE][SIZE], int x, int y_start, int length)
+         { add_log(board, x, y_start, length, FALSE); }},
+        {'L', "Add Trap Log", "L <row> <col_start> <length>", [](struct board_tile board[SIZE][SIZE], int x, int y_start, int length)
+         { add_log(board, x, y_start, length, TRUE); }},
+        {'c', "Clear Row", "c <row>", [](struct board_tile board[SIZE][SIZE], int x, int, int)
          { clear_row(board, x); }},
-        {'r', "Remove Log", [](struct board_tile board[SIZE][SIZE], int x, int y, int)
+        {'r', "Remove Log", "r <row> <col>", [](struct board_tile board[SIZE][SIZE], int x, int y, int)
          { remove_log(board, x, y); }},
-        {'b', "Add Bug", [](struct board_tile board[SIZE][SIZE], int x, int y, int)
+        {'b', "Add Bug", "b <row> <col>", [](struct board_tile board[SIZE][SIZE], int x, int y, int)
          { add_bug(board, x, y); }},
-        {'B', "Remove Bug", [](struct board_tile board[SIZE][SIZE], int x, int y, int)
+        {'B', "Remove Bug", "B <row> <col>", [](struct board_tile board[SIZE][SIZE], int x, int y, int)
          { remove_bug(board, x, y); }},
-        {'k', "Add Bank", [](struct board_tile board[SIZE][SIZE], int x, int, int)
+        {'k', "Add Bank", "k <row>", [](struct board_tile board[SIZE][SIZE], int x, int, int)
          { add_bank(board, x); }},
-        {'o', "Initialize Board", [](struct board_tile board[SIZE][SIZE], int, int, int)
+        {'o', "Initialize Board", "o", [](struct board_tile board[SIZE][SIZE], int, int, int)
          { init_board(board); }},
-        {'O', "Load Board", [](struct board_tile board[SIZE][SIZE], int, int, int) { /* No action. */ }},
-        {'q', "Quit Setup", [](struct board_tile[SIZE][SIZE], int, int, int) { /* No action. */ }}};
+        {'O', "Load Board", "O <filename>", [](struct board_tile board[SIZE][SIZE], int, int, int) { /* No action. */ }},
+        {'q', "Quit Setup", "q", [](struct board_tile[SIZE][SIZE], int, int, int) { /* No action. */ }}};
 
     Component setup_sidebar =
         create_setup_sidebar(game_board, frog, state, commands, setup_selected,
@@ -603,19 +604,22 @@ Component create_setup_sidebar(struct board_tile game_board[SIZE][SIZE], frog_da
 
     setup_menu |=
         CatchEvent(
-            [&, setup_input](Event event)
+            [&, setup_input, message](Event event)
             {
                 if (event.is_character())
                 {
                     setup_input->TakeFocus();
                     setup_command = event.character();
                     setup_cursor = setup_command.size();
+                    message[0] = text("Enter your command.");
                     return true;
                 }
                 if (event == Event::Return)
                 {
                     setup_command = commands[setup_selected].setup_char;
                     setup_command += ' ';
+                    message[0] =
+                        text("Usage: " + commands[setup_selected].command_usage);
                     setup_input->TakeFocus();
                     setup_cursor = setup_command.size();
                     return true;

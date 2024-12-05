@@ -288,10 +288,11 @@ int main(void)
          { remove_bug(board, x, y); }},
         {'k', "Add Bank", "k <row>", [](struct board_tile board[SIZE][SIZE], int x, int, int)
          { add_bank(board, x); }},
-        {'o', "Initialize Board", "o", [](struct board_tile board[SIZE][SIZE], int, int, int)
+        {'o', "Initialize Board", "Resets the board to initial state", [](struct board_tile board[SIZE][SIZE], int, int, int)
          { init_board(board); }},
         {'O', "Load Board", "O <filename>", [](struct board_tile board[SIZE][SIZE], int, int, int) { /* No action. */ }},
-        {'q', "Quit Setup", "q", [](struct board_tile[SIZE][SIZE], int, int, int) { /* No action. */ }}};
+        {'q', "Quit Setup", "Return to game", [](struct board_tile[SIZE][SIZE], int, int, int) { /* No action. */ }},
+        {'X', "Restart Game", "Reset the board and restart the game", [](struct board_tile[SIZE][SIZE], int, int, int) { /* No action. */ }}};
 
     Component setup_sidebar =
         create_setup_sidebar(game_board, frog, state, commands, setup_selected,
@@ -642,6 +643,15 @@ Component create_setup_sidebar(struct board_tile game_board[SIZE][SIZE], frog_da
                         return true;
                     }
                     load_board(game_board, frog, boardfile);
+                }
+
+                if (command == 'X')
+                {
+                    game_event event = NO_EVENT;
+                    restart_game(game_board, frog, state, event, message);
+                    current_tab = 0;
+                    setup_command = "";
+                    return true;
                 }
 
                 // TODO: Add error message if command did not execute.

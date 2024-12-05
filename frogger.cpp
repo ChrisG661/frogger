@@ -257,7 +257,7 @@ int main(void)
     game_state state = GAME;
     game_event current_event = NO_EVENT;
     frog_data frog =
-        {.x = XSTART, .y = YSTART, .lives = LIVES, .double_jump = DOUBLE_JUMP, .score = 0, .last_move_time = chrono::steady_clock::now()};
+        {.x = XSTART, .y = YSTART, .lives = LIVES, .double_jump = DOUBLE_JUMP, .score = 0, .high_score = 0, .last_move_time = chrono::steady_clock::now()};
     string key_pressed = " ";
     Element message[2] = {text(""), text("")};
     int setup_selected = 0, setup_cursor = 0;
@@ -794,8 +794,9 @@ void restart_game(struct board_tile board[SIZE][SIZE], frog_data &frog, game_sta
     bugs_move_counter = 0;
     state = GAME;
     current_event = NO_EVENT;
+    int high_score = frog.high_score;
     frog =
-        {.x = XSTART, .y = YSTART, .lives = LIVES, .double_jump = DOUBLE_JUMP, .score = 0, .last_move_time = chrono::steady_clock::now()};
+        {.x = XSTART, .y = YSTART, .lives = LIVES, .double_jump = DOUBLE_JUMP, .score = 0, .high_score = high_score, .last_move_time = chrono::steady_clock::now()};
     message[0] = text("Game restarted!") | color(Color::Cyan) | blink;
 }
 

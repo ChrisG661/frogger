@@ -1,5 +1,5 @@
 {
-    "cmake.sourceDirectory": "D:/Dev/frogger",
+    "cmake.sourceDirectory": "${workspaceFolder}",
     "cmake.useCMakePresets": "always",
     "files.associations": {
         "chrono": "cpp",

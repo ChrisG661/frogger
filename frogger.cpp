@@ -155,6 +155,7 @@ struct log_data
     log_direction direction; // The direction the log is moving.
     int move_counter;        // The counter to track log movement.
     bool trap;               // The log is a trap.
+    bool trap_triggered;     // The trap log has been triggered.
     int trap_decay;          // The decay counter for the trap log.
 };
 
@@ -163,6 +164,7 @@ struct log_tile_data
 {
     log_direction direction; // The direction the log is moving.
     bool trap;               // The log is a trap.
+    bool trap_triggered;     // The trap log has been triggered.
     int trap_decay;          // The decay counter for the trap log.
 };
 
@@ -929,6 +931,7 @@ void add_log(struct board_tile board[SIZE][SIZE], int x, int y_start, int length
     log_tile_data log_tile = {
         .direction = (x % 2 == 0) ? LOG_RIGHT : LOG_LEFT, // Alternate directions
         .trap = is_trap,                                  // Set trap log
+        .trap_triggered = FALSE,                          // Set trap trigger
         .trap_decay = is_trap ? LOG_TRAP_TICKS : 0        // Set trap timer
     };
 
@@ -970,6 +973,7 @@ void add_log(struct board_tile board[SIZE][SIZE], int x, int y_start, int length
         .direction = (x % 2 == 0) ? LOG_RIGHT : LOG_LEFT, // Alternate directions
         .move_counter = game_tick % LOG_MOVE_TICKS,       // Sync log movement
         .trap = is_trap,                                  // Set trap log
+        .trap_triggered = FALSE,                          // Set trap trigger
         .trap_decay = is_trap ? LOG_TRAP_TICKS : 0        // Set trap timer
     };
     logs.push_back(new_log);
@@ -1311,7 +1315,7 @@ void update_logs(struct board_tile board[SIZE][SIZE], frog_data &frog)
                     if (board[it->row][i].bug.present)
                         remove_bug(board, it->row, i);
                     board[it->row][i] =
-                        {.type = WATER, .occupied = FALSE, .bug = {.present = FALSE, .direction = RIGHT}};
+                        {.type = WATER, .occupied = FALSE, .bug = {.present = FALSE, .direction = RIGHT}, .log = {.trap = FALSE}};
                 }
             }
 
@@ -1361,6 +1365,20 @@ void update_logs(struct board_tile board[SIZE][SIZE], frog_data &frog)
         }
         if (!logs.empty() && it->trap)
         {
+            // Trigger trap if frog is on the log
+            for (int i = it->start_col; !it->trap_triggered && i < it->start_col + it->length && i < SIZE; i++)
+            {
+                if (i >= 0 && i < SIZE && board[it->row][i].occupied)
+                    it->trap_triggered = TRUE;
+            }
+
+            // Do not start decay until trap is triggered
+            if (!it->trap_triggered)
+            {
+                ++it;
+                continue;
+            }
+
             if (--(it->trap_decay) <= 0)
             {
                 for (int i = it->start_col; i < it->start_col + it->length && i < SIZE; i++)

@@ -191,6 +191,8 @@ struct board_tile
 
 // Game loop functions
 void init_board(struct board_tile board[SIZE][SIZE]);
+void restart_game(struct board_tile board[SIZE][SIZE], frog_data &, game_state &,
+                  game_event &, Element[2]);
 string load_file(string);
 void load_board(struct board_tile board[SIZE][SIZE], frog_data &, string);
 game_event check_state(struct board_tile board[SIZE][SIZE], frog_data &, enum game_state &);
@@ -346,6 +348,16 @@ int main(void)
                                     state = SETUP;
                                     return true;
                                 }
+
+                                // Restart game when space is pressed if game is over
+                                if (state == WIN || state == LOSE)
+                                {
+                                    if (event == Event::Character(' '))
+                                    {
+                                        restart_game(game_board, frog, state, current_event, message);
+                                        return true;
+                                    }
+                                }
                                 return false;
                             });
 
@@ -446,14 +458,18 @@ void game_update_thread(struct board_tile board[SIZE][SIZE], frog_data &frog,
             this_thread::sleep_for(2s);
             message[0] = text("Congratulations! You won!") | color(Color::Gold1) | blink;
             screen.PostEvent(Event::Custom);
-            break;
+            this_thread::sleep_for(3s);
+            message[0] = text("Press SPACE to restart.") | color(Color::Orange1) | blink;
+            screen.PostEvent(Event::Custom);
         }
         else if (state == LOSE)
         {
             this_thread::sleep_for(2s);
             message[0] = text("Game over! You lost!") | color(Color::Red3) | blink;
             screen.PostEvent(Event::Custom);
-            break;
+            this_thread::sleep_for(3s);
+            message[0] = text("Press SPACE to restart.") | color(Color::Orange1) | blink;
+            screen.PostEvent(Event::Custom);
         }
 
         // Sleep for remainder of tick
@@ -711,6 +727,30 @@ void init_board(struct board_tile board[SIZE][SIZE])
                 board[row][col].type = WATER;
         }
     }
+}
+
+/*
+ * Function: restart_game
+ * ---------------------
+ * Restarts the game by reinitializing the board and frogger.
+ *
+ * board: The 2D array representing the board.
+ * frog: The frog data struct.
+ * state: The current state of the game.
+ * current_event: The current event of the game.
+ * message: The message to be displayed.
+ */
+void restart_game(struct board_tile board[SIZE][SIZE], frog_data &frog, game_state &state,
+                  game_event &current_event, Element message[2])
+{
+    init_board(board);
+    game_tick = 0;
+    bugs_move_counter = 0;
+    state = GAME;
+    current_event = NO_EVENT;
+    frog =
+        {.x = XSTART, .y = YSTART, .lives = LIVES, .score = 0, .last_move_time = chrono::steady_clock::now()};
+    message[0] = text("Game restarted!") | color(Color::Cyan) | blink;
 }
 
 /*

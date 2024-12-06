@@ -1,4 +1,4 @@
-// Jumping Tian
+// Jumping Frogger
 //
 // This program was written by Group 5
 // Christopher Marchel Mark Gijoh (01082240011)
@@ -315,7 +315,7 @@ int main(void)
         Renderer(game_container, [&]
                  { return vbox(
                        {
-                           text("Frogger Game") | hcenter,
+                           text("  JUMPING FROGGER  ") | color(Color::Honeydew2) | bgcolor(Color::DarkSeaGreen4Bis) | hcenter,
                            separator(),
                            filler(),
                            game_container->Render() |
@@ -341,7 +341,7 @@ int main(void)
                                 }
                                 if (event == Event::CtrlQ)
                                 {
-                                    message[0] = text("Thank you for playing Frogger Game!");
+                                    message[0] = text("Thank you for playing Jumping Frogger!");
                                     screen.ExitLoopClosure()();
                                     return true;
                                 }
@@ -448,7 +448,7 @@ void game_update_thread(struct board_tile board[SIZE][SIZE], frog_data &frog,
                 break;
             }
 
-            // Update previous frog position and increment game tick
+            // date previous frog position and increment game tick
             prev_frog = frog;
             game_tick++;
             if (game_tick == INT_MAX)

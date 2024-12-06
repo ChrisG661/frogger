@@ -1509,6 +1509,16 @@ void update_logs(struct board_tile board[SIZE][SIZE], frog_data &frog)
                     board[it->row][i] =
                         {.type = WATER, .occupied = FALSE, .bug = {.present = FALSE, .direction = RIGHT}, .log = {.trap = FALSE}};
                 }
+                else if (i < 0)
+                {
+                    log_tiles.push_back(
+                        board_tile{
+                            .type = log_type,
+                            .occupied = FALSE,
+                            .bug = {.present = FALSE, .direction = RIGHT},
+                            .log =
+                                {.direction = it->direction, .trap = it->trap, .trap_decay = it->trap_decay}});
+                }
             }
 
             // Erase if log is completely out of bounds
@@ -1520,12 +1530,14 @@ void update_logs(struct board_tile board[SIZE][SIZE], frog_data &frog)
             }
 
             // Add log tiles back to board
-            int new_col = it->start_col;
-            if (new_col < 0)
-                new_col = move_dir;
-            for (int i = new_col; i < it->start_col + it->length && i < SIZE; i++)
+            for (int i = it->start_col; i < it->start_col + it->length && i < SIZE; i++)
             {
-                if (i >= 0 && !log_tiles.empty())
+                if (i < 0 && !log_tiles.empty())
+                {
+                    log_tiles.erase(log_tiles.begin());
+                    continue;
+                }
+                else if (i >= 0 && !log_tiles.empty())
                 {
                     board[it->row][i] = log_tiles.front();
                     if (board[it->row][i].bug.present)
